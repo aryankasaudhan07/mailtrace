@@ -120,6 +120,41 @@ async def _abuseipdb(ip: str) -> dict | None:
     return data
 
 
+# --- Keyless online geo fallback, used only when the offline DB is absent -----
+_GEO_CACHE: dict[str, tuple[float, dict | None]] = {}
+_GEO_TTL = 24 * 3600
+
+
+def _online_geo_sync(ip: str) -> dict | None:
+    r = requests.get(f"https://ipwho.is/{ip}", timeout=6)
+    r.raise_for_status()
+    d = r.json()
+    if not d.get("success"):
+        return None
+    conn = d.get("connection") or {}
+    return {
+        "country": d.get("country_code"),
+        "city": d.get("city"),
+        "latitude": d.get("latitude"),
+        "longitude": d.get("longitude"),
+        "isp": conn.get("isp") or conn.get("org"),
+    }
+
+
+async def _online_geo(ip: str) -> dict | None:
+    """Free, no-key geolocation (ipwho.is), cached. None on any failure."""
+    now = time.time()
+    hit = _GEO_CACHE.get(ip)
+    if hit and hit[0] > now:
+        return hit[1]
+    try:
+        data = await asyncio.to_thread(_online_geo_sync, ip)
+    except Exception:
+        data = None
+    _GEO_CACHE[ip] = (now + _GEO_TTL, data)
+    return data
+
+
 def _risk(score: int) -> str:
     return "High" if score >= 70 else "Medium" if score >= 35 else "Low"
 
@@ -131,14 +166,25 @@ async def geo(ip: str) -> dict:
     except ValueError:
         raise HTTPException(400, "invalid IP address") from None
 
+    try:
+        is_global = ipaddress.ip_address(ip).is_global
+    except ValueError:
+        is_global = False
+    private = not is_global
+
+    # Offline GeoLite2 is primary; fall back to a free online lookup only when the
+    # DB isn't present (e.g. the cloud deploy) and the IP is routable.
     g = _geoip_lookup(ip) or {}
+    geo_source = "GeoLite2 (offline)" if g.get("latitude") is not None else None
+    if g.get("latitude") is None and is_global:
+        online = await _online_geo(ip)
+        if online:
+            g = online
+            geo_source = "ipwho.is (live lookup)"
+
     tor = _check_tor_exit(ip)
     vpn = _check_vpn(ip)
     dc = _check_datacenter(ip)
-    try:
-        private = not ipaddress.ip_address(ip).is_global
-    except ValueError:
-        private = False
 
     feed = await _abuseipdb(ip)
 
@@ -159,7 +205,7 @@ async def geo(ip: str) -> dict:
             "recent_abuse": "High" if (feed.get("totalReports") or 0) >= 20 else "Low",
             "source": "AbuseIPDB (live, cached 6h)",
         }
-        isp = feed.get("isp") or ("Datacenter / hosting" if dc else "Unknown")
+        isp = feed.get("isp") or g.get("isp") or ("Datacenter / hosting" if dc else "Unknown")
         country = feed.get("countryCode") or g.get("country")
     else:
         # ---- offline heuristic fallback (no key / no network) ----
@@ -171,9 +217,9 @@ async def geo(ip: str) -> dict:
             "vpn_proxy": vpn or dc,
             "hosting": dc,
             "recent_abuse": "High" if score >= 70 else "Low",
-            "source": "heuristic (offline GeoLite2 + Tor/VPN/DC lists; add ABUSEIPDB_KEY for live scores)",
+            "source": "heuristic (Tor/VPN/DC lists; add ABUSEIPDB_KEY for live scores)",
         }
-        isp = "Datacenter / hosting" if dc else ("Anonymized (Tor)" if tor else "Unknown")
+        isp = ("Anonymized (Tor)" if tor else "Datacenter / hosting" if dc else g.get("isp") or "Unknown")
         country = g.get("country")
 
     return {
@@ -184,5 +230,6 @@ async def geo(ip: str) -> dict:
         "longitude": g.get("longitude"),
         "isp": isp,
         "org": isp,
+        "geo_source": geo_source,
         "reputation": reputation,
     }

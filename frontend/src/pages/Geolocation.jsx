@@ -94,14 +94,16 @@ export default function Geolocation() {
           <RepCell label="Recent Abuse" text={rep?.recent_abuse} danger={rep?.recent_abuse === 'High'} />
         </div>
         <div className="rep-note"><Info size={15} />
-          {rep?.source?.startsWith('AbuseIPDB') ? (
-            <span>Live reputation from <b>AbuseIPDB</b> — crowd-sourced abuse reports, cached 6h.
-              {rep.last_reported ? ` Last reported ${new Date(rep.last_reported).toLocaleDateString()}.` : ''}
-              {' '}Coordinates from offline GeoLite2.</span>
-          ) : (
-            <span>Country, coordinates and Tor/VPN/datacenter flags are real (offline GeoLite2 + intel lists).
-              Abuse-confidence is a <b>heuristic estimate</b> — add an <span className="mono">ABUSEIPDB_KEY</span> to <span className="mono">.env</span> for live crowd-sourced scores.</span>
-          )}
+          <span>
+            Location via <b>{data?.geo_source || 'offline GeoLite2'}</b>.{' '}
+            {rep?.source?.startsWith('AbuseIPDB') ? (
+              <>Live reputation from <b>AbuseIPDB</b> (crowd-sourced, cached 6h)
+                {rep.last_reported ? `, last reported ${new Date(rep.last_reported).toLocaleDateString()}` : ''}.</>
+            ) : (
+              <>Tor/VPN/datacenter flags come from offline intel lists; abuse-confidence is a{' '}
+                <b>heuristic estimate</b> — add an <span className="mono">ABUSEIPDB_KEY</span> for live crowd-sourced scores.</>
+            )}
+          </span>
         </div>
       </div>
     </div>
