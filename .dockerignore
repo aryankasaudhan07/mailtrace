@@ -1,25 +1,30 @@
-# keep the backend image lean — code only
-venv/
-frontend/
-node_modules/
-.git/
-__pycache__/
-*.pyc
-.pytest_cache/
-.ruff_cache/
+# NOTE: Docker applies this to every build in the repo, including Dockerfile.render
+# which DOES need frontend/. So we keep frontend/ in context and instead exclude
+# the heavy/nested bits with **/ globs.
 
-# data & secrets are mounted / injected at runtime, never baked in
-intel/
+# secrets & data — never baked into an image (mounted / injected at runtime)
 .env
-.m4_cache.json
 .auth_store.json
+.m4_cache.json
+intel/
 *.mmdb
 *.db
 *.sqlite*
 samples/private/
 
-# build artefacts / scratch
-dist/
+# local environments, VCS, build caches (nested-safe globs)
+venv/
+.git/
+**/node_modules
+**/dist
+frontend_dist/
+**/__pycache__
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.DS_Store
+
+# scratch / test artefacts
 *.log
 full_test_results.json
 test_results.json
