@@ -1,21 +1,22 @@
-# Runtime + test deps for what the app actually imports. Packages for later
-# phases (celery/redis/alembic/psycopg, mail-parser/extract-msg/imap-tools,
-# checkdmarc/networkx/tldextract/structlog) were removed — they weren't imported
-# and their pins made `pip install` unresolvable on a clean Python 3.12.
+# Runtime + test deps for what the app actually imports. Pinned to the exact
+# versions the app runs on locally (app boots + 40 tests pass on these), so the
+# set is guaranteed to resolve. Future-phase packages (celery/redis/alembic/
+# psycopg, mail-parser/extract-msg/imap-tools, checkdmarc/networkx/tldextract/
+# structlog) were removed — unused, and their old pins made pip unresolvable.
 
 # --- web core ---
-fastapi==0.115.6
-uvicorn[standard]==0.34.0
-pydantic==2.10.4
-pydantic-settings==2.7.1
-python-multipart==0.0.20
-PyYAML==6.0.2
+fastapi==0.141.1
+uvicorn[standard]==0.52.4
+pydantic==2.13.4
+pydantic-settings==2.15.0
+python-multipart==0.0.32
+PyYAML==6.0.3
 
 # --- persistence (SQLite via SQLAlchemy in fixture mode) ---
-sqlalchemy==2.0.36
+sqlalchemy==2.0.52
 
 # --- M2/M3 header + auth forensics ---
-dnspython==2.7.0
+dnspython==2.8.0
 dkimpy==1.1.8
 pyspf==2.0.14
 
@@ -24,17 +25,17 @@ google-genai==2.19.0
 python-dotenv==1.2.3
 
 # --- M5 network intel ---
-geoip2==4.8.1
+geoip2==5.3.0
 
 # --- M6 domain intel ---
 whoisit==4.0.4
-rapidfuzz==3.10.1
+rapidfuzz==3.14.5
 
 # --- M5/insights reputation lookups ---
 requests==2.34.2
 
 # --- dev / CI ---
-pytest==8.3.4
-pytest-asyncio==0.25.0
+pytest==9.1.1
+pytest-asyncio==1.4.0
 httpx==0.28.1
-ruff==0.8.4
+ruff==0.16.4
