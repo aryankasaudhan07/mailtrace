@@ -1,0 +1,48 @@
+# --- core ---
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+python-multipart==0.0.20
+PyYAML==6.0.2
+
+# --- persistence (Track A wires these in phase 2) ---
+sqlalchemy==2.0.36
+alembic==1.14.0
+psycopg[binary]==3.2.3
+redis==5.2.1
+celery==5.4.0
+
+# --- M1 ingestion ---
+mail-parser==4.1.2
+extract-msg==0.54.1
+imap-tools==1.7.4
+
+# --- M2/M3 header + auth forensics (Track A + B) ---
+dnspython==2.7.0
+dkimpy==1.1.8
+pyspf==2.0.14
+checkdmarc==5.17.5
+
+# --- M6 domain intel (Track B) ---
+whoisit==4.0.4
+tldextract==5.1.3
+rapidfuzz==3.10.1
+confusable-homoglyphs==3.3.1
+
+# --- M5 network intel (Track D) ---
+geoip2==4.8.1
+httpx==0.28.1
+
+# --- M7 graph (Track E) ---
+networkx==3.4.2
+
+# --- M10 reporting (Track E) ---
+weasyprint==63.1
+structlog==24.4.0
+
+# --- dev ---
+pytest==8.3.4
+pytest-asyncio==0.25.0
+httpx==0.28.1
+ruff==0.8.4

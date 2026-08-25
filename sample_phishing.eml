@@ -1,0 +1,24 @@
+Return-Path: <security@paypa1-secure.tk>
+Received: from mail.suspicious-relay.net (unknown [203.0.113.55])
+	by mx.recipientdomain.com with ESMTP id AB12CD34
+	for <victim@recipientdomain.com>; Wed, 21 Aug 2026 10:15:22 +0000
+Received: from localhost (localhost [127.0.0.1])
+	by internal-relay.recipientdomain.com; Wed, 21 Aug 2026 10:15:20 +0000
+Authentication-Results: mx.recipientdomain.com; spf=fail smtp.mailfrom=paypa1-secure.tk; dkim=fail; dmarc=fail
+From: PayPal Security <security@paypa1-secure.tk>
+Reply-To: recovery-support@totally-legit-mail.ru
+To: victim@recipientdomain.com
+Subject: URGENT: Your account will be suspended in 24 hours
+Content-Type: text/plain; charset="utf-8"
+
+Dear Customer,
+
+We detected unusual activity on your account. Click here immediately to
+verify your identity or your account will be permanently locked:
+http://secure-login-verify.tk/reset
+
+Failure to act within 24 hours will result in suspension of your account
+and all linked payment methods.
+
+Regards,
+Bank Security Team

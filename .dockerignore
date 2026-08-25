@@ -1,0 +1,25 @@
+# keep the backend image lean — code only
+venv/
+frontend/
+node_modules/
+.git/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# data & secrets are mounted / injected at runtime, never baked in
+intel/
+.env
+.m4_cache.json
+.auth_store.json
+*.mmdb
+*.db
+*.sqlite*
+samples/private/
+
+# build artefacts / scratch
+dist/
+*.log
+full_test_results.json
+test_results.json

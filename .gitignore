@@ -1,0 +1,28 @@
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+.pytest_cache/
+.ruff_cache/
+
+# Intel databases — NEVER commit these.
+# MaxMind's licence forbids redistribution outside CC BY-SA terms, and they are large.
+# Run scripts/fetch_intel.sh instead.
+intel/
+*.mmdb
+*.mmdb.gz
+
+# Real email samples may contain personal data. Keep them out of git.
+samples/private/
+*.eml.private
+
+# Claude Code — personal overrides only. .claude/settings.json IS committed.
+.claude/settings.local.json
+.m4_cache.json
+
+.auth_store.json
+frontend_dist/
+node_modules/
+dist/
+.DS_Store

@@ -1,0 +1,34 @@
+.geo-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
+.geo-input-group { display: flex; align-items: center; gap: 20px; }
+.geo-field { display: flex; flex-direction: column; gap: 3px; }
+.geo-ip { background: none; border: none; outline: none; color: var(--text); font-size: 1.3rem; font-weight: 700;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace; width: 200px; }
+.geo-risk { display: flex; align-items: center; gap: 10px; font-size: 1.15rem; }
+
+.geo-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; margin-top: 20px; }
+.geo-details { display: flex; flex-direction: column; }
+.geo-row { display: flex; justify-content: space-between; gap: 14px; padding: 12px 2px; border-bottom: 1px solid var(--line); font-size: .92rem; }
+.geo-row:last-child { border-bottom: none; }
+.geo-val { font-weight: 600; }
+
+.geo-map-card { padding: 0; overflow: hidden; }
+.worldmap { position: relative; width: 100%; height: 380px; background: var(--map-ocean); display: grid; }
+.worldmap svg { width: 100%; height: 100%; }
+.wm-land { fill: var(--map-land); stroke: var(--map-line); }
+.wm-grat { stroke: var(--map-line); }
+.map-caption { position: absolute; bottom: 14px; left: 16px; background: #0009; border: 1px solid var(--line-2);
+  border-radius: 8px; padding: 7px 12px; font-size: .82rem; display: flex; align-items: center; gap: 6px; }
+
+.rep-grid { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr 1fr; gap: 22px; align-items: center; }
+.rep-abuse { }
+.abuse-bar { height: 9px; background: var(--line-2); border-radius: 6px; overflow: hidden; margin-top: 8px; }
+.abuse-bar > div { height: 100%; border-radius: 6px; transition: width .4s; }
+.rep-cell { border-left: 1px solid var(--line); padding-left: 20px; }
+
+.rep-note { display: flex; gap: 9px; align-items: flex-start; margin-top: 20px; padding: 13px 15px;
+  background: var(--violet-dim); border: 1px solid #7c4dff33; border-radius: 11px; color: var(--text-2);
+  font-size: .84rem; line-height: 1.5; }
+.rep-note svg { color: var(--violet); flex-shrink: 0; margin-top: 2px; }
+.spin { animation: spin 1s linear infinite; }
+
+@media (max-width: 1050px) { .geo-grid { grid-template-columns: 1fr; } .rep-grid { grid-template-columns: 1fr 1fr; } .rep-cell { border-left: none; padding-left: 0; } }

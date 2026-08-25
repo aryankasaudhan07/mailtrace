@@ -1,0 +1,33 @@
+# One command for the whole stack:  docker compose up --build
+#   • App  (React UI)      → http://localhost:8080
+#   • API  (FastAPI docs)  → http://localhost:8000/docs
+#   • Live campaign graph  → http://localhost:8000/live
+#
+# Runs in FIXTURE_MODE (in-memory SQLite) so no Postgres/Redis is required for
+# the demo. intel/ is mounted read-only for the offline geo/Tor/VPN databases;
+# .env (optional) supplies GEMINI_API_KEY / ABUSEIPDB_KEY if present.
+
+services:
+  api:
+    build: .
+    ports: ["8000:8000"]
+    environment:
+      - FIXTURE_MODE=1
+    env_file:
+      - path: .env
+        required: false
+    volumes:
+      - ./intel:/srv/intel:ro
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/health"]
+      interval: 10s
+      timeout: 4s
+      retries: 5
+
+  web:
+    build: ./frontend
+    ports: ["8080:80"]
+    depends_on:
+      api:
+        condition: service_started

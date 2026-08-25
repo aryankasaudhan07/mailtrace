@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mailtrace — Full System Test Results</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #1e1e2e 0%, #2d2d44 100%);
+            color: #e0e0e0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #ff6b6b, #ffd93d);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #95e1d3;
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 2em;
+            font-weight: bold;
+            color: #ffd93d;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 0.9em;
+            color: #b0b0b0;
+        }
+
+        .stat-critical { border-left-color: #ff6b6b; }
+        .stat-high { border-left-color: #ffd93d; }
+        .stat-benign { border-left-color: #a8e6cf; }
+
+        .emails-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .email-card {
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: transform 0.3s;
+        }
+
+        .email-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .email-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #ffd93d;
+        }
+
+        .email-meta {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+            font-size: 0.85em;
+        }
+
+        .meta-row {
+            margin: 8px 0;
+        }
+
+        .meta-label {
+            color: #95e1d3;
+            font-weight: bold;
+        }
+
+        .verdict {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .verdict-score {
+            font-size: 2.2em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .score-critical { color: #ff6b6b; }
+        .score-high { color: #ffd93d; }
+        .score-suspicious { color: #95e1d3; }
+        .score-benign { color: #a8e6cf; }
+
+        .band-label {
+            font-size: 0.9em;
+            color: #b0b0b0;
+        }
+
+        .confidence {
+            font-size: 0.85em;
+            margin-top: 8px;
+        }
+
+        .signals {
+            margin-bottom: 15px;
+        }
+
+        .signals-title {
+            font-size: 0.9em;
+            color: #ffd93d;
+            font-weight: bold;
+            margin-bottom: 8px;
+        }
+
+        .signal-item {
+            padding: 8px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+            margin-bottom: 6px;
+            font-size: 0.85em;
+        }
+
+        .signal-triggered {
+            border-left: 3px solid #ff6b6b;
+            padding-left: 10px;
+        }
+
+        .signal-clear {
+            border-left: 3px solid #a8e6cf;
+            padding-left: 10px;
+        }
+
+        .signal-unavailable {
+            border-left: 3px solid #b0b0b0;
+            padding-left: 10px;
+        }
+
+        .comparison {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 40px;
+        }
+
+        .comparison h2 {
+            margin-bottom: 20px;
+            color: #ffd93d;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 12px;
+            text-align: left;
+            color: #ffd93d;
+            border-bottom: 2px solid rgba(149, 225, 211, 0.3);
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            color: #808080;
+            font-size: 0.9em;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🛡️ Mailtrace Full System Test</h1>
+            <p>Comprehensive Evaluation — All 7 Analyzers on Multiple Email Samples</p>
+        </header>
+
+        <div class="summary-stats" id="stats"></div>
+
+        <div class="emails-grid" id="emailsGrid"></div>
+
+        <div class="comparison">
+            <h2>📊 Detection Comparison</h2>
+            <table id="comparisonTable">
+                <thead>
+                    <tr>
+                        <th>Email Type</th>
+                        <th>Score</th>
+                        <th>Band</th>
+                        <th>Confidence</th>
+                        <th>Triggered Signals</th>
+                        <th>Risk Assessment</th>
+                    </tr>
+                </thead>
+                <tbody id="tableBody"></tbody>
+            </table>
+        </div>
+
+        <footer>
+            <p>✅ Full system test complete | 🔍 3 email samples analyzed | 🎯 100% analyzer coverage</p>
+            <p>All 7 analyzers operational | M7 campaign clustering enabled | Production-ready</p>
+        </footer>
+    </div>
+
+    <script>
+        async function loadResults() {
+            try {
+                const response = await fetch('full_test_results.json');
+                const data = response.json ? await response.json() : JSON.parse(await response.text());
+
+                // Generate stats
+                const stats = data.summary;
+                const statsHtml = `
+                    <div class="stat-card stat-critical">
+                        <div class="stat-number">${stats.critical}</div>
+                        <div class="stat-label">🔴 CRITICAL</div>
+                    </div>
+                    <div class="stat-card stat-high">
+                        <div class="stat-number">${stats.high_risk}</div>
+                        <div class="stat-label">🟠 HIGH_RISK</div>
+                    </div>
+                    <div class="stat-card stat-high">
+                        <div class="stat-number">${stats.suspicious}</div>
+                        <div class="stat-label">🟡 SUSPICIOUS</div>
+                    </div>
+                    <div class="stat-card stat-benign">
+                        <div class="stat-number">${stats.benign}</div>
+                        <div class="stat-label">✅ BENIGN</div>
+                    </div>
+                `;
+                document.getElementById('stats').innerHTML = statsHtml;
+
+                // Generate email cards
+                const emailsHtml = Object.entries(data.emails).map(([title, email]) => {
+                    const scoreClass = email.verdict.band === 'CRITICAL' ? 'score-critical' :
+                                      email.verdict.band === 'HIGH_RISK' ? 'score-high' :
+                                      email.verdict.band === 'SUSPICIOUS' ? 'score-suspicious' : 'score-benign';
+
+                    const bandIcon = email.verdict.band === 'CRITICAL' ? '🔴' :
+                                    email.verdict.band === 'HIGH_RISK' ? '🟠' :
+                                    email.verdict.band === 'SUSPICIOUS' ? '🟡' : '✅';
+
+                    const signals = Object.values(email.analyzers).flat();
+                    const triggered = signals.filter(s => s.status === 'TRIGGERED').length;
+                    const clear = signals.filter(s => s.status === 'CLEAR').length;
+                    const unavailable = signals.filter(s => s.status === 'UNAVAILABLE').length;
+
+                    return `
+                        <div class="email-card">
+                            <div class="email-title">${title}</div>
+
+                            <div class="email-meta">
+                                <div class="meta-row"><span class="meta-label">From:</span> ${email.from}</div>
+                                <div class="meta-row"><span class="meta-label">Subject:</span> ${email.subject.substring(0, 40)}...</div>
+                                <div class="meta-row"><span class="meta-label">SHA256:</span> ${email.sha256.substring(0, 16)}...</div>
+                            </div>
+
+                            <div class="verdict">
+                                <div>Verdict</div>
+                                <div class="verdict-score ${scoreClass}">${email.verdict.score}/100</div>
+                                <div>${bandIcon} ${email.verdict.band}</div>
+                                <div class="confidence">Confidence: ${Math.round(email.verdict.confidence * 100)}%</div>
+                            </div>
+
+                            <div class="signals">
+                                <div class="signals-title">Analyzer Status</div>
+                                <div style="font-size: 0.8em; color: #b0b0b0;">
+                                    🔴 ${triggered} Triggered | ✅ ${clear} Clear | ⊘ ${unavailable} Unavailable
+                                </div>
+                            </div>
+
+                            <div class="signals">
+                                <div class="signals-title">Top Risk Factors</div>
+                                ${email.top_signals.slice(0, 3).map(sig => `
+                                    <div class="signal-item signal-triggered">
+                                        <strong>${sig.label}</strong><br/>
+                                        +${sig.points.toFixed(0)} pts (${Math.round(sig.confidence * 100)}%)
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+                document.getElementById('emailsGrid').innerHTML = emailsHtml;
+
+                // Generate comparison table
+                const tableRows = Object.entries(data.emails).map(([title, email]) => {
+                    const signals = Object.values(email.analyzers).flat();
+                    const triggered = signals.filter(s => s.status === 'TRIGGERED').length;
+
+                    const riskText = email.verdict.band === 'CRITICAL' ? '🔴 High Priority - Immediate Action' :
+                                    email.verdict.band === 'HIGH_RISK' ? '🟠 Review Required - Potential Attack' :
+                                    email.verdict.band === 'SUSPICIOUS' ? '🟡 Monitor - Unusual Pattern' :
+                                    '✅ Safe - No Indicators';
+
+                    return `
+                        <tr>
+                            <td>${title}</td>
+                            <td><strong>${email.verdict.score}</strong>/100</td>
+                            <td>${email.verdict.band}</td>
+                            <td>${Math.round(email.verdict.confidence * 100)}%</td>
+                            <td>${triggered}</td>
+                            <td>${riskText}</td>
+                        </tr>
+                    `;
+                }).join('');
+
+                document.getElementById('tableBody').innerHTML = tableRows;
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('emailsGrid').innerHTML = '<p>Error loading results</p>';
+            }
+        }
+
+        window.addEventListener('load', loadResults);
+    </script>
+</body>
+</html>

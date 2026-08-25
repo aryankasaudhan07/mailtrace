@@ -1,0 +1,17 @@
+Received: by mx.example.ac.in with LMTP id 3bC8dR; Tue, 18 Aug 2026 11:03:12 +0000
+Received: from mail.example.ac.in ([203.0.113.10]) by mx.example.ac.in with ESMTPS id 8jK2y; Tue, 18 Aug 2026 11:03:11 +0000
+Message-ID: <20260818T110310.4c7b@example.ac.in>
+Date: Tue, 18 Aug 2026 11:03:10 +0000
+From: "Registrar Office" <registrar@example.ac.in>
+To: faculty@example.ac.in
+Subject: Minutes of the technical committee meeting
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
+
+Colleagues,
+
+Minutes of Tuesday's technical committee meeting are on the intranet at
+http://intranet.example.ac.in/minutes/2026-08-18.
+
+Regards,
+Registrar Office

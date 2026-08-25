@@ -1,0 +1,20 @@
+# Render blueprint — deploys Mailtrace as one Docker web service that serves
+# both the API and the React UI. Push this repo to GitHub, then in Render:
+#   New +  →  Blueprint  →  pick this repo  →  Apply.
+# After the first deploy, set the two secret env vars in the dashboard (optional).
+services:
+  - type: web
+    name: mailtrace
+    runtime: docker
+    dockerfilePath: ./Dockerfile.render
+    plan: free
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: FIXTURE_MODE
+        value: "1"
+      # Optional live extras — set these in the Render dashboard, not in git:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: ABUSEIPDB_KEY
+        sync: false

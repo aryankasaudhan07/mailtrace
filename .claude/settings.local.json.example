@@ -1,0 +1,6 @@
+{
+  "_comment": "Copy to .claude/settings.local.json for personal overrides. Gitignored. Local values win over the committed team settings.",
+  "permissions": {
+    "defaultMode": "acceptEdits"
+  }
+}

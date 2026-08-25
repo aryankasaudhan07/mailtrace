@@ -1,0 +1,24 @@
+# Shared tool config so ruff and pytest behave identically on all six laptops.
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"   # floor, so nobody is blocked by their system Python
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "ASYNC"]
+ignore = [
+    "B008",     # FastAPI's Depends()/File() defaults are the documented pattern
+    "E501",     # line length: the formatter's job, not the linter's
+    "UP042",    # str+Enum is deliberate -- StrEnum changes Pydantic serialisation
+    "ASYNC109", # the `timeout` param on run_all is intentional public API
+    "UP017",    # datetime.UTC is 3.11+; timezone.utc keeps the 3.10 floor
+    "UP041",    # asyncio.TimeoutError only aliases the builtin from 3.11
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"

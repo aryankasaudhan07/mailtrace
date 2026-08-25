@@ -1,0 +1,30 @@
+{
+  "case_id": "6f1c9a1e-0b3d-4c7a-9a11-2e5d8f0a1b21",
+  "sha256": "3c9a7b1e5d2f48a0b6c1e9d7f3a5b2c8d4e6f0a1b3c5d7e9f1a3b5c7d9e1f3a5",
+  "subject": "URGENT: Updated vendor bank details for invoice INV-2291",
+  "from_addr": "accounts@aicte-lndia.org",
+  "from_display_name": "AICTE Accounts Section",
+  "reply_to": "aicte.accounts.dept@gmail.com",
+  "message_id": "<20260819T041233.9f2a@mail-verify-portal.top>",
+  "url_count": 3,
+  "attachment_count": 1,
+  "verdict": {
+    "case_id": "6f1c9a1e-0b3d-4c7a-9a11-2e5d8f0a1b21",
+    "score": 88,
+    "band": "CRITICAL",
+    "confidence": 0.85,
+    "scorer_version": "1.0.0",
+    "summary": "Assessed critical, driven by: Injected / forged Received hop; DMARC fail with strict alignment; Homoglyph / lookalike of a protected brand.",
+    "lanes_unavailable": ["M7"],
+    "contributions": [
+      {"signal":"forged_received_hop","analyzer":"M2","weight":30,"confidence":1.0,"points":30.0,"label":"Injected / forged Received hop","rationale":"Deliberate deception. Near-zero false positive rate.","detail":{"hop":0,"ip":"10.0.0.5","explanation":"Private address in a public relay chain; hop was injected before transmission."}},
+      {"signal":"dmarc_fail_strict","analyzer":"M3","weight":28,"confidence":1.0,"points":28.0,"label":"DMARC fail with strict alignment","rationale":"The domain owner explicitly published a policy this message violates.","detail":{"policy":"reject","alignment":"strict","org_domain":"aicte-india.org"}},
+      {"signal":"brand_lookalike_domain","analyzer":"M6","weight":26,"confidence":1.0,"points":26.0,"label":"Homoglyph / lookalike of a protected brand","rationale":"There is no legitimate reason to register a confusable domain.","detail":{"observed":"aicte-lndia.org","impersonates":"aicte-india.org","technique":"lowercase L substituted for i","edit_distance":1}},
+      {"signal":"attachment_hash_malicious","analyzer":"M5","weight":22,"confidence":1.0,"points":22.0,"label":"Attachment hash flagged malicious","rationale":"External corroboration on a concrete artifact.","detail":{"filename":"INV-2291.xlsm","detections":"41/72"}},
+      {"signal":"reply_to_domain_mismatch","analyzer":"M2","weight":20,"confidence":1.0,"points":20.0,"label":"Reply-To domain differs from From domain","rationale":"Core BEC mechanic: reply diversion to an attacker-controlled inbox.","detail":{"from_domain":"aicte-lndia.org","reply_to_domain":"gmail.com"}},
+      {"signal":"domain_age_lt_30d","analyzer":"M6","weight":18,"confidence":1.0,"points":18.0,"label":"Sender domain registered less than 30 days ago","rationale":"Phishing infrastructure is disposable, and therefore young.","detail":{"created":"2026-08-08","age_days":11,"registrar":"Example Registrar LLC"}},
+      {"signal":"payment_diversion_intent","analyzer":"M4","weight":17,"confidence":0.93,"points":15.81,"label":"Payment-diversion intent detected","rationale":"Highest-loss BEC category; weighted above generic phishing.","detail":{"cues":["updated bank details","before close of business","do not call to confirm"]}},
+      {"signal":"origin_anonymized","analyzer":"M5","weight":12,"confidence":1.0,"points":12.0,"label":"Origin is a Tor exit or known VPN","rationale":"Deliberate anonymization. Suspicious for transactional mail, not proof of intent.","detail":{"ip":"185.220.101.47","kind":"tor_exit"}}
+    ]
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "case_id": "6f1c9a1e-0b3d-4c7a-9a11-2e5d8f0a1b21",
+  "records": [
+    {"case_id":"6f1c9a1e-0b3d-4c7a-9a11-2e5d8f0a1b21","analyzer":"M2","signal":"private_ip_in_public_chain","status":"TRIGGERED","confidence":1.0,"detail":{"hop":0,"ip":"10.0.0.5"},"raw":{},"observed_at":"2026-08-19T04:12:40Z"},
+    {"case_id":"6f1c9a1e-0b3d-4c7a-9a11-2e5d8f0a1b21","analyzer":"M2","signal":"timestamp_regression","status":"CLEAR","confidence":1.0,"detail":{},"raw":{},"observed_at":"2026-08-19T04:12:40Z"},
+    {"case_id":"6f1c9a1e-0b3d-4c7a-9a11-2e5d8f0a1b21","analyzer":"M3","signal":"dkim_valid_aligned","status":"CLEAR","confidence":1.0,"detail":{"signatures_found":0},"raw":{},"observed_at":"2026-08-19T04:12:41Z"},
+    {"case_id":"6f1c9a1e-0b3d-4c7a-9a11-2e5d8f0a1b21","analyzer":"M7","signal":"campaign_infrastructure_reuse","status":"UNAVAILABLE","confidence":0.0,"detail":{"reason":"graph store empty"},"raw":{},"observed_at":"2026-08-19T04:12:42Z"}
+  ]
+}

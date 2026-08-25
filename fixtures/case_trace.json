@@ -1,0 +1,10 @@
+{
+  "case_id": "6f1c9a1e-0b3d-4c7a-9a11-2e5d8f0a1b21",
+  "boundary_seq": 2,
+  "hops": [
+    {"seq":0,"raw":"Received: from [10.0.0.5] by smtp.mail-verify-portal.top; Wed, 19 Aug 2026 04:12:29 +0000","from_host":null,"from_ip":"10.0.0.5","by_host":"smtp.mail-verify-portal.top","protocol":"SMTP","timestamp":"2026-08-19T04:12:29Z","trust":"UNVERIFIED","anomalies":["private_ip_in_public_chain"],"geo":null},
+    {"seq":1,"raw":"Received: from smtp.mail-verify-portal.top (unknown [185.220.101.47]) by relay.provider.net; Wed, 19 Aug 2026 04:12:31 +0000","from_host":"smtp.mail-verify-portal.top","from_ip":"185.220.101.47","by_host":"relay.provider.net","protocol":"ESMTP","timestamp":"2026-08-19T04:12:31Z","trust":"UNVERIFIED","anomalies":["rdns_mismatch"],"geo":{"country":"DE","country_name":"Germany","city":"Frankfurt am Main","lat":50.1109,"lon":8.6821,"asn":"AS24940","org":"Hetzner Online GmbH","tor_exit":true,"vpn":false,"datacenter":true}},
+    {"seq":2,"raw":"Received: from relay.provider.net ([203.0.113.44]) by mx.example.ac.in with ESMTPS; Wed, 19 Aug 2026 04:12:33 +0000","from_host":"relay.provider.net","from_ip":"203.0.113.44","by_host":"mx.example.ac.in","protocol":"ESMTPS","timestamp":"2026-08-19T04:12:33Z","trust":"BOUNDARY","anomalies":[],"geo":{"country":"IN","country_name":"India","city":"Mumbai","lat":19.076,"lon":72.8777,"asn":"AS4755","org":"Example Transit Pvt Ltd","tor_exit":false,"vpn":false,"datacenter":true}},
+    {"seq":3,"raw":"Received: by mx.example.ac.in with LMTP; Wed, 19 Aug 2026 04:12:34 +0000","from_host":null,"from_ip":null,"by_host":"mx.example.ac.in","protocol":"LMTP","timestamp":"2026-08-19T04:12:34Z","trust":"TRUSTED","anomalies":[],"geo":null}
+  ]
+}

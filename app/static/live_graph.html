@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mailtrace — Live Campaign Graph</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #0f0f18; --panel: #171722; --line: #262636; --dim: #8a8a9a;
+    --crit: #ff5c6c; --high: #ff9f45; --susp: #ffd93d; --benign: #4ade80;
+    --infra: #ff5c6c; --edge: #ff5c6c; --accent: #ffd93d;
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg); color: #e6e6ee; height: 100vh; overflow: hidden;
+    display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 18px; padding: 10px 18px;
+    background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap; }
+  h1 { font-size: 1.02em; font-weight: 600; white-space: nowrap; }
+  h1 .a { color: var(--accent); }
+  .toggle { display: flex; background: #10101a; border: 1px solid var(--line);
+    border-radius: 8px; overflow: hidden; }
+  .toggle button { background: none; border: none; color: var(--dim); font: inherit;
+    font-size: 0.8em; padding: 6px 13px; cursor: pointer; transition: .15s; }
+  .toggle button.on { background: var(--accent); color: #12121e; font-weight: 700; }
+  .stats { display: flex; gap: 16px; }
+  .stat { font-size: 0.78em; color: var(--dim); white-space: nowrap; }
+  .stat b { color: var(--accent); font-size: 1.3em; margin-right: 4px; font-weight: 700; }
+  .ws { display: flex; align-items: center; gap: 6px; font-size: 0.76em; color: var(--dim);
+    margin-left: auto; }
+  .ws-dot { width: 9px; height: 9px; border-radius: 50%; background: #555; transition: .3s; }
+  .ws-dot.on { background: var(--benign); box-shadow: 0 0 8px var(--benign); }
+  main { flex: 1; display: flex; min-height: 0; }
+  #wrap { flex: 1; position: relative; min-width: 0; }
+  canvas { display: block; width: 100%; height: 100%; }
+  aside { width: 296px; background: var(--panel); border-left: 1px solid var(--line);
+    display: flex; flex-direction: column; min-height: 0; }
+  aside h2 { font-size: 0.72em; text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--dim); padding: 13px 16px 9px; display: flex; justify-content: space-between; }
+  #feed { flex: 1; overflow-y: auto; padding: 0 12px 14px; }
+  #feed::-webkit-scrollbar { width: 8px; }
+  #feed::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+  .ev { background: #1e1e2c; border-left: 3px solid #555; border-radius: 5px;
+    padding: 8px 11px; margin-bottom: 7px; font-size: 0.8em; }
+  .ev.new { animation: slide .35s ease-out; }
+  @keyframes slide { from { opacity: 0; transform: translateX(16px); } }
+  .ev .s { font-weight: 600; margin-bottom: 3px; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  .ev .m { color: var(--dim); font-size: 0.92em; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap; }
+  .ev .sc { font-weight: 700; }
+  .ev.CRITICAL { border-left-color: var(--crit); } .ev.CRITICAL .sc { color: var(--crit); }
+  .ev.HIGH_RISK { border-left-color: var(--high); } .ev.HIGH_RISK .sc { color: var(--high); }
+  .ev.SUSPICIOUS { border-left-color: var(--susp); } .ev.SUSPICIOUS .sc { color: var(--susp); }
+  .ev.BENIGN { border-left-color: var(--benign); } .ev.BENIGN .sc { color: var(--benign); }
+  .legend { position: absolute; bottom: 14px; left: 14px; background: #171722cc;
+    border: 1px solid var(--line); border-radius: 9px; padding: 11px 14px;
+    font-size: 0.74em; line-height: 1.95; backdrop-filter: blur(4px); }
+  .dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%;
+    margin-right: 6px; vertical-align: middle; }
+  .sq { display: inline-block; width: 9px; height: 9px; margin: 0 7px 0 1px;
+    vertical-align: middle; background: var(--infra); border-radius: 2px; }
+  .empty { color: var(--dim); font-size: 0.82em; padding: 8px 4px; }
+  #tip { position: absolute; pointer-events: none; background: #12121ef2;
+    border: 1px solid #3a3a52; border-radius: 7px; padding: 9px 12px; font-size: 0.78em;
+    display: none; max-width: 330px; z-index: 10; box-shadow: 0 6px 20px #0008; line-height: 1.5; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🛡️ Mailtrace <span class="a">Campaign View</span></h1>
+  <div class="toggle" id="toggle">
+    <button data-mode="network" class="on">Network</button>
+    <button data-mode="clusters">Clusters</button>
+  </div>
+  <div class="stats">
+    <span class="stat"><b id="n-cases">0</b>cases</span>
+    <span class="stat"><b id="n-camp">0</b>campaigns</span>
+    <span class="stat"><b id="n-infra">0</b>shared</span>
+  </div>
+  <div class="ws"><span class="ws-dot" id="wsdot"></span><span id="wslabel">connecting…</span></div>
+</header>
+<main>
+  <div id="wrap">
+    <canvas id="cv"></canvas>
+    <div class="legend" id="legend"></div>
+    <div id="tip"></div>
+  </div>
+  <aside>
+    <h2><span>Live feed</span><span id="feedcount" style="color:var(--dim)"></span></h2>
+    <div id="feed"><div class="empty">Waiting for cases…</div></div>
+  </aside>
+</main>
+
+<script>
+(() => {
+  const cv = document.getElementById('cv'), ctx = cv.getContext('2d');
+  const tip = document.getElementById('tip');
+  const BAND = { CRITICAL:'#ff5c6c', HIGH_RISK:'#ff9f45', SUSPICIOUS:'#ffd93d', BENIGN:'#4ade80' };
+  const CAMP_COLORS = ['#ff8fa3','#8fb8ff','#c79bff','#7ee7c7','#ffd98f','#ff9f45'];
+  const esc = s => String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  let W=0,H=0;
+  function resize(){ const r=cv.parentElement.getBoundingClientRect(); W=r.width; H=r.height;
+    cv.width=W*devicePixelRatio; cv.height=H*devicePixelRatio;
+    ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
+    if(mode==='clusters') layoutClusters(); }
+  addEventListener('resize', resize);
+
+  // ---- data ----
+  const cases = new Map();
+  const caseOrder = [];
+  const edgeRows = [];
+  const pos = new Map();                 // network positions (persist)
+  let mode = 'network';
+  const radiusOf = c => 11 + (c.score||0)/9;
+
+  // ---- campaign detection (shared by both views) ----
+  function computeCampaigns(){
+    const share = new Map();             // indKey -> Set(caseId)
+    for(const e of edgeRows){ const k=e.kind+':'+e.value;
+      (share.get(k) || share.set(k,new Set()).get(k)).add(e.caseId); }
+    const parent=new Map(); const find=x=>{ if(!parent.has(x))parent.set(x,x);
+      let r=x; while(parent.get(r)!==r) r=parent.get(r); parent.set(x,r); return r; };
+    for(const id of cases.keys()) find(id);
+    const sharedInfra=[];
+    for(const [key,set] of share){ if(set.size<2) continue; sharedInfra.push({key,set});
+      const arr=[...set]; for(let i=1;i<arr.length;i++){ parent.set(find(arr[0]),find(arr[i])); } }
+    const groups=new Map();
+    for(const id of cases.keys()){ const r=find(id); (groups.get(r)||groups.set(r,[]).get(r)).push(id); }
+    const infraByRoot=new Map();
+    for(const {key,set} of sharedInfra){ const r=find([...set][0]);
+      (infraByRoot.get(r)||infraByRoot.set(r,[]).get(r)).push(key); }
+    const campaigns=[], singles=[];
+    for(const [r,ids] of groups){ if(ids.length>=2) campaigns.push({ids, infra:infraByRoot.get(r)||[]});
+      else singles.push(ids[0]); }
+    campaigns.sort((a,b)=>b.ids.length-a.ids.length);
+    return { campaigns, singles, sharedInfra, share };
+  }
+
+  function updateStats(camp){
+    document.getElementById('n-cases').textContent = cases.size;
+    document.getElementById('n-camp').textContent = camp.campaigns.length;
+    document.getElementById('n-infra').textContent = camp.sharedInfra.length;
+  }
+
+  // ============================ NETWORK VIEW ============================
+  let nodes=[], links=[];
+  function ipos(id){ if(!pos.has(id)) pos.set(id,{ x:W/2+(Math.random()-0.5)*160,
+    y:H/2+(Math.random()-0.5)*160, vx:0, vy:0 }); return pos.get(id); }
+
+  function buildNetwork(camp){
+    nodes=[]; links=[]; const byId=new Map(); const seen=new Set();
+    for(const [id,c] of cases){ const p=ipos('c:'+id);
+      const n={id:'c:'+id, type:'case', r:radiusOf(c), data:c, p};
+      nodes.push(n); byId.set(n.id,n); seen.add(n.id); }
+    for(const {key,set} of camp.sharedInfra){ const id='i:'+key, p=ipos(id);
+      const [kind,...rest]=key.split(':'); const value=rest.join(':');
+      const n={id, type:'infra', r:6, kind, value, links:set.size, p};
+      nodes.push(n); byId.set(id,n); seen.add(id);
+      for(const cid of set){ const c=byId.get('c:'+cid); if(c) links.push([c,n]); } }
+    for(const id of [...pos.keys()]) if(!seen.has(id)) pos.delete(id);
+  }
+  function tickNetwork(){
+    const N=nodes.length; if(!N) return;
+    for(let i=0;i<N;i++){ const a=nodes[i].p, ra=nodes[i].r;
+      a.vx+=(W/2-a.x)*0.0015; a.vy+=(H/2-a.y)*0.0015;
+      for(let j=i+1;j<N;j++){ const b=nodes[j].p, rb=nodes[j].r;
+        let dx=a.x-b.x,dy=a.y-b.y,d2=dx*dx+dy*dy||0.01,d=Math.sqrt(d2);
+        const rep=2600/d2; let fx=dx/d*rep, fy=dy/d*rep; const mind=ra+rb+14;
+        if(d<mind){ const p=(mind-d)*0.5; fx+=dx/d*p; fy+=dy/d*p; }
+        a.vx+=fx;a.vy+=fy;b.vx-=fx;b.vy-=fy; } }
+    for(const [a,b] of links){ const dx=b.p.x-a.p.x,dy=b.p.y-a.p.y,d=Math.hypot(dx,dy)||0.01,f=(d-64)*0.02;
+      const fx=dx/d*f,fy=dy/d*f; a.p.vx+=fx;a.p.vy+=fy;b.p.vx-=fx;b.p.vy-=fy; }
+    const pad=34;
+    for(const n of nodes){ const p=n.p; p.vx*=0.85;p.vy*=0.85;
+      p.x+=Math.max(-6,Math.min(6,p.vx)); p.y+=Math.max(-6,Math.min(6,p.vy));
+      p.x=Math.max(pad,Math.min(W-pad,p.x)); p.y=Math.max(pad,Math.min(H-pad,p.y)); }
+  }
+  function drawNetwork(now){
+    for(const [a,b] of links){ ctx.strokeStyle='#ff5c6c66'; ctx.lineWidth=1.6;
+      ctx.beginPath(); ctx.moveTo(a.p.x,a.p.y); ctx.lineTo(b.p.x,b.p.y); ctx.stroke(); }
+    for(const n of nodes) drawNode(n, now);
+  }
+
+  // ============================ CLUSTERS VIEW ============================
+  // Static circle-pack: each campaign is a titled panel with score-sized case
+  // bubbles packed inside; standalone/benign mail collects in its own panel.
+  let clNodes=[], panels=[];
+  function packGroup(ids){
+    const items=ids.map(id=>({id, c:cases.get(id), r:radiusOf(cases.get(id))}));
+    items.sort((a,b)=>b.r-a.r);
+    const maxR=Math.max(...items.map(i=>i.r),12);
+    const step=maxR*1.9+6;
+    let br=maxR;
+    items.forEach((it,i)=>{ const ang=i*2.399963; const rad=i===0?0:step*0.6*Math.sqrt(i);
+      it.dx=Math.cos(ang)*rad; it.dy=Math.sin(ang)*rad; br=Math.max(br,Math.hypot(it.dx,it.dy)+it.r); });
+    return { items, radius: br+8 };
+  }
+  function layoutClusters(){
+    const camp=computeCampaigns();
+    const groups=[];
+    camp.campaigns.forEach((g,i)=>groups.push({ title:`Campaign ${String.fromCharCode(65+i)}`,
+      color:CAMP_COLORS[i%CAMP_COLORS.length], infra:g.infra, ...packGroup(g.ids) }));
+    if(camp.singles.length) groups.push({ title:'Standalone / unlinked', color:'#6b7280',
+      infra:[], ...packGroup(camp.singles) });
+
+    const HEAD=46, GAP=26, pad=20, MINW=176;
+    clNodes=[]; panels=[];
+    let cx=pad, cy=pad, rowH=0;
+    for(const g of groups){
+      const bw=Math.max(g.radius*2, MINW), bh=g.radius*2+HEAD;
+      if(cx+bw>W-pad && cx>pad){ cx=pad; cy+=rowH+GAP; rowH=0; }
+      const box={ x:cx, y:cy, w:bw, h:bh, cx:cx+bw/2, cy:cy+HEAD+g.radius,
+        title:g.title, color:g.color, infra:g.infra, count:g.items.length };
+      panels.push(box);
+      for(const it of g.items){ const p={ x:box.cx+it.dx, y:box.cy+it.dy };
+        clNodes.push({ id:'c:'+it.id, type:'case', r:it.r, data:it.c, p }); }
+      cx+=bw+GAP; rowH=Math.max(rowH,bh);
+    }
+    // vertical centering when it fits
+    const totalH=cy+rowH+pad;
+    if(totalH<H){ const off=(H-totalH)/2;
+      for(const b of panels){ b.y+=off; b.cy+=off; }
+      for(const n of clNodes) n.p.y+=off; }
+  }
+  function drawClusters(now){
+    for(const b of panels){
+      ctx.fillStyle=b.color+'14'; ctx.strokeStyle=b.color+'66'; ctx.lineWidth=1.4;
+      roundRect(b.x,b.y,b.w,b.h,12); ctx.fill(); ctx.stroke();
+      ctx.textAlign='left'; ctx.textBaseline='middle';
+      ctx.fillStyle=b.color; ctx.font='bold 12.5px sans-serif';
+      ctx.fillText(`${b.title}  ·  ${b.count}`, b.x+13, b.y+17);
+      if(b.infra.length){                       // second line: shared infrastructure
+        const parts=b.infra[0].split(':'); const one=parts[0]+' '+parts.slice(1).join(':');
+        const sub = b.infra.length>1 ? `${b.infra.length} shared indicators` : one;
+        ctx.fillStyle='#9a9aac'; ctx.font='10px sans-serif';
+        ctx.fillText(fit(sub, b.w-26), b.x+13, b.y+34);
+      }
+    }
+    for(const n of clNodes) drawNode(n, now);
+  }
+  function fit(text, maxw){ let t=text; while(t.length>4 && ctx.measureText(t).width>maxw) t=t.slice(0,-2);
+    return t===text ? t : t+'…'; }
+  function roundRect(x,y,w,h,r){ ctx.beginPath();
+    ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); }
+
+  // ---- shared node draw ----
+  function drawNode(n, now){
+    if(n.p.born && now-n.p.born<1100){ const t=(now-n.p.born)/1100;
+      ctx.beginPath(); ctx.arc(n.p.x,n.p.y,n.r+t*24,0,7);
+      ctx.strokeStyle=`rgba(255,217,61,${(1-t)*0.6})`; ctx.lineWidth=2; ctx.stroke(); }
+    if(n.type==='case'){
+      ctx.beginPath(); ctx.arc(n.p.x,n.p.y,n.r,0,7); ctx.fillStyle=BAND[n.data.band]||'#888'; ctx.fill();
+      if(n===pinned){ ctx.strokeStyle=BAND[n.data.band]; ctx.lineWidth=2.5;
+        ctx.beginPath(); ctx.arc(n.p.x,n.p.y,n.r+5,0,7); ctx.stroke(); }
+      ctx.fillStyle='#0f0f18'; ctx.font=`bold ${Math.round(n.r*0.85)}px sans-serif`;
+      ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(n.data.score,n.p.x,n.p.y);
+    } else {
+      ctx.fillStyle='#ff5c6c'; ctx.fillRect(n.p.x-4,n.p.y-4,8,8);
+      if(n===pinned){ ctx.strokeStyle=BAND.SUSPICIOUS; ctx.lineWidth=2; ctx.strokeRect(n.p.x-7,n.p.y-7,14,14); }
+    }
+  }
+
+  // ---- render loop ----
+  let pinned=null;
+  function frame(){
+    const now=performance.now(); ctx.clearRect(0,0,W,H);
+    if(mode==='network'){ tickNetwork(); drawNetwork(now); }
+    else drawClusters(now);
+    if(pinned) showTip(pinned, pinned.p.x, pinned.p.y);
+    requestAnimationFrame(frame);
+  }
+
+  // ---- tooltip / pin ----
+  const activeNodes = () => mode==='network' ? nodes : clNodes;
+  function hit(ev){ const r=cv.getBoundingClientRect(), mx=ev.clientX-r.left, my=ev.clientY-r.top;
+    for(const n of activeNodes()) if(Math.hypot(n.p.x-mx,n.p.y-my)<n.r+8) return n; return null; }
+  function showTip(n,x,y){ tip.style.display='block';
+    tip.style.left=Math.min(x+14,W-270)+'px'; tip.style.top=(y+14)+'px';
+    const hdr=n===pinned?'<div style="color:#888;font-size:.85em;margin-bottom:3px">📌 pinned — click empty space to close</div>':'';
+    tip.innerHTML=hdr+(n.type==='case'
+      ? `<b>${esc(n.data.subject||'(no subject)')}</b><br>${esc(n.data.from_addr||'')}<br>`+
+        `<b style="color:${BAND[n.data.band]}">${n.data.score}/100 ${n.data.band}</b>`
+      : `<b>${esc(n.kind)}</b>: ${esc(n.value)}<br><b style="color:#ff5c6c">shared by ${n.links} cases — campaign infrastructure</b>`);
+  }
+  cv.addEventListener('mousemove', ev=>{ if(pinned) return; const n=hit(ev);
+    if(!n){ tip.style.display='none'; return; }
+    const r=cv.getBoundingClientRect(); showTip(n, ev.clientX-r.left, ev.clientY-r.top); });
+  cv.addEventListener('click', ev=>{ const n=hit(ev); pinned=n; if(!n) tip.style.display='none'; });
+
+  // ---- legend per mode ----
+  function setLegend(){
+    const L=document.getElementById('legend');
+    const bands=`<span class="dot" style="background:var(--crit)"></span>CRITICAL`+
+      `<span class="dot" style="background:var(--high);margin-left:8px"></span>HIGH`+
+      `<span class="dot" style="background:var(--susp);margin-left:8px"></span>SUSPICIOUS`+
+      `<span class="dot" style="background:var(--benign);margin-left:8px"></span>BENIGN`;
+    L.innerHTML = mode==='network'
+      ? `${bands}<br><span class="sq"></span>shared infrastructure &nbsp;<span style="color:var(--edge)">━</span> campaign link<br><span style="color:var(--dim)">bigger circle = higher score · click to pin</span>`
+      : `${bands}<br><span style="color:var(--dim)">each box = one campaign (or standalone). bubble size = score · click to pin</span>`;
+  }
+
+  // ---- data + refresh ----
+  function refresh(){
+    const camp=computeCampaigns(); updateStats(camp);
+    if(mode==='network') buildNetwork(camp); else layoutClusters();
+  }
+  function addCase(c, live){
+    const id=c.case_id, isNew=!cases.has(id); cases.set(id,c);
+    if(isNew){ caseOrder.push(id); if(live){ const p=ipos('c:'+id); p.born=performance.now(); } }
+    if(Array.isArray(c.indicators)) for(const e of c.indicators) edgeRows.push({caseId:id,kind:e.kind,value:e.value});
+  }
+  function renderFeed(){
+    const feed=document.getElementById('feed');
+    document.getElementById('feedcount').textContent = caseOrder.length? caseOrder.length+' cases':'';
+    if(!caseOrder.length){ feed.innerHTML='<div class="empty">Waiting for cases…</div>'; return; }
+    feed.innerHTML = caseOrder.slice(-60).reverse().map(id=>{ const c=cases.get(id); if(!c)return'';
+      return `<div class="ev ${c.band}"><div class="s">${esc(c.subject||'(no subject)')}</div>`+
+        `<div class="m">${esc(c.from_addr||'')}</div>`+
+        `<div class="m"><span class="sc">${c.score}/100 ${c.band}</span></div></div>`; }).join('');
+  }
+
+  // ---- toggle ----
+  document.getElementById('toggle').addEventListener('click', ev=>{
+    const b=ev.target.closest('button'); if(!b) return; mode=b.dataset.mode; pinned=null;
+    [...ev.currentTarget.children].forEach(x=>x.classList.toggle('on', x===b));
+    setLegend(); refresh();
+  });
+
+  // ---- boot ----
+  resize(); setLegend();
+  fetch('/api/cases/graph/live').then(r=>r.json()).then(g=>{
+    const byCase={}; for(const e of (g.edges||[])) (byCase[e.case_id] ||= []).push(e);
+    for(const c of (g.cases||[])) addCase({...c, indicators: byCase[c.case_id]||[]}, false);
+    refresh(); renderFeed();
+  }).catch(()=>{ refresh(); renderFeed(); });
+  frame();
+
+  const dot=document.getElementById('wsdot'), label=document.getElementById('wslabel');
+  function connect(){ const proto=location.protocol==='https:'?'wss':'ws';
+    const ws=new WebSocket(`${proto}://${location.host}/api/stream`);
+    ws.onopen=()=>{ dot.classList.add('on'); label.textContent='live'; };
+    ws.onmessage=m=>{ let ev; try{ev=JSON.parse(m.data);}catch{return;}
+      if(ev.type==='case_scored'){ addCase(ev.case,true); refresh(); renderFeed();
+        const f=document.querySelector('#feed .ev'); if(f) f.classList.add('new'); } };
+    ws.onclose=()=>{ dot.classList.remove('on'); label.textContent='reconnecting…'; setTimeout(connect,2000); };
+  }
+  connect();
+})();
+</script>
+</body>
+</html>

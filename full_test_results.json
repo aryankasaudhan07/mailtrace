@@ -1,0 +1,354 @@
+{
+  "test_suite": "Full System Evaluation",
+  "timestamp": "2026-08-24T12:00:00Z",
+  "emails": {
+    "Phishing Attack": {
+      "path": "sample_phishing.eml",
+      "case_id": "d4614228-1291-469f-a625-cee5886ac945",
+      "sha256": "e895cb93c1729b1453bf5cc92e6e6af91e3d5b13a0a209210cabf441f1e802fe",
+      "from": "security@paypa1-secure.tk",
+      "subject": "URGENT: Your account will be suspended in 24 hours",
+      "verdict": {
+        "score": 84,
+        "band": "CRITICAL",
+        "confidence": 1.0
+      },
+      "analyzers": {
+        "M2": [
+          {
+            "signal": "forged_received_hop",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "private_ip_in_public_chain",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          },
+          {
+            "signal": "timestamp_regression",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "reply_to_domain_mismatch",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          },
+          {
+            "signal": "fake_reply",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ],
+        "M3": [
+          {
+            "signal": "auth_verification_passed",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ],
+        "M4": [
+          {
+            "signal": "hidden_text_mismatch",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "classifier_phishing_high",
+            "status": "TRIGGERED",
+            "confidence": 0.99
+          },
+          {
+            "signal": "credential_harvest_intent",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          }
+        ],
+        "M5": [
+          {
+            "signal": "origin_anonymized",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ],
+        "M6": [
+          {
+            "signal": "domain_no_mx",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          },
+          {
+            "signal": "domain_does_not_resolve",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          }
+        ],
+        "M7": [
+          {
+            "signal": "campaign_infrastructure_reuse",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ]
+      },
+      "top_signals": [
+        {
+          "signal": "reply_to_domain_mismatch",
+          "label": "Reply-To domain differs from From domain",
+          "points": 20.0,
+          "confidence": 1.0
+        },
+        {
+          "signal": "private_ip_in_public_chain",
+          "label": "Private or reserved IP in a public relay chain",
+          "points": 16.0,
+          "confidence": 1.0
+        },
+        {
+          "signal": "classifier_phishing_high",
+          "label": "Classifier phishing probability > 0.9",
+          "points": 14.85,
+          "confidence": 0.99
+        },
+        {
+          "signal": "credential_harvest_intent",
+          "label": "Credential harvesting intent detected",
+          "points": 14.0,
+          "confidence": 1.0
+        },
+        {
+          "signal": "domain_does_not_resolve",
+          "label": "Domain does not resolve (no A record)",
+          "points": 10.0,
+          "confidence": 1.0
+        }
+      ]
+    },
+    "BEC with Injected Hop": {
+      "path": "samples/bec-injected-hop.eml",
+      "case_id": "02f54617-2a8a-4168-a6e2-a3f842922268",
+      "sha256": "0f3e8538eb44723db75b1029b171204903c69641978833f26ea86dd3163dac5e",
+      "from": "accounts@example-lnstitute.example",
+      "subject": "URGENT: Updated vendor bank details for invoice INV-2291",
+      "verdict": {
+        "score": 100,
+        "band": "CRITICAL",
+        "confidence": 1.0
+      },
+      "analyzers": {
+        "M2": [
+          {
+            "signal": "forged_received_hop",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          },
+          {
+            "signal": "private_ip_in_public_chain",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "timestamp_regression",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "reply_to_domain_mismatch",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          },
+          {
+            "signal": "fake_reply",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ],
+        "M3": [
+          {
+            "signal": "auth_verification_passed",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ],
+        "M4": [
+          {
+            "signal": "hidden_text_mismatch",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "classifier_phishing_high",
+            "status": "TRIGGERED",
+            "confidence": 0.95
+          },
+          {
+            "signal": "payment_diversion_intent",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          }
+        ],
+        "M5": [
+          {
+            "signal": "origin_anonymized",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ],
+        "M6": [
+          {
+            "signal": "domain_no_mx",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          },
+          {
+            "signal": "domain_does_not_resolve",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          }
+        ],
+        "M7": [
+          {
+            "signal": "campaign_infrastructure_reuse",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ]
+      },
+      "top_signals": [
+        {
+          "signal": "forged_received_hop",
+          "label": "Injected / forged Received hop",
+          "points": 30.0,
+          "confidence": 1.0
+        },
+        {
+          "signal": "reply_to_domain_mismatch",
+          "label": "Reply-To domain differs from From domain",
+          "points": 20.0,
+          "confidence": 1.0
+        },
+        {
+          "signal": "payment_diversion_intent",
+          "label": "Payment-diversion intent detected",
+          "points": 17.0,
+          "confidence": 1.0
+        },
+        {
+          "signal": "classifier_phishing_high",
+          "label": "Classifier phishing probability > 0.9",
+          "points": 14.25,
+          "confidence": 0.95
+        },
+        {
+          "signal": "domain_does_not_resolve",
+          "label": "Domain does not resolve (no A record)",
+          "points": 10.0,
+          "confidence": 1.0
+        }
+      ]
+    },
+    "Benign Control Email": {
+      "path": "samples/benign-control.eml",
+      "case_id": "08b89561-40d2-49d0-bddb-f3bfbbdce9d3",
+      "sha256": "d987eb54ead8d6c6c017ebb66dfb60d00c2ee350ae0437ece76d1bd7bbfe9dfd",
+      "from": "registrar@example.ac.in",
+      "subject": "Minutes of the technical committee meeting",
+      "verdict": {
+        "score": 19,
+        "band": "BENIGN",
+        "confidence": 1.0
+      },
+      "analyzers": {
+        "M2": [
+          {
+            "signal": "forged_received_hop",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "private_ip_in_public_chain",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "timestamp_regression",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "reply_to_domain_mismatch",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "fake_reply",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ],
+        "M3": [
+          {
+            "signal": "auth_verification_passed",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ],
+        "M4": [
+          {
+            "signal": "hidden_text_mismatch",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ],
+        "M5": [
+          {
+            "signal": "origin_anonymized",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ],
+        "M6": [
+          {
+            "signal": "domain_no_mx",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          },
+          {
+            "signal": "domain_does_not_resolve",
+            "status": "TRIGGERED",
+            "confidence": 1.0
+          }
+        ],
+        "M7": [
+          {
+            "signal": "campaign_infrastructure_reuse",
+            "status": "CLEAR",
+            "confidence": 1.0
+          }
+        ]
+      },
+      "top_signals": [
+        {
+          "signal": "domain_does_not_resolve",
+          "label": "Domain does not resolve (no A record)",
+          "points": 10.0,
+          "confidence": 1.0
+        },
+        {
+          "signal": "domain_no_mx",
+          "label": "Sender domain publishes no MX record",
+          "points": 9.0,
+          "confidence": 1.0
+        }
+      ]
+    }
+  },
+  "summary": {
+    "critical": 2,
+    "high_risk": 0,
+    "suspicious": 0,
+    "benign": 1,
+    "total_emails": 3
+  }
+}

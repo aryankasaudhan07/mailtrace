@@ -1,0 +1,442 @@
+{
+  "email": {
+    "from": "security@paypa1-secure.tk",
+    "to": "victim@recipientdomain.com",
+    "subject": "URGENT: Your account will be suspended in 24 hours",
+    "sha256": "e895cb93c1729b1453bf5cc92e6e6af91e3d5b13a0a209210cabf441f1e802fe"
+  },
+  "analyzers": {
+    "run_1": {
+      "case_id": "9e0c4924-7f1e-4f59-ac30-e88abbd682c0",
+      "analyzers": {
+        "M2": [
+          {
+            "signal": "private_ip_in_public_chain",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "hop": 0,
+              "ip": "127.0.0.1",
+              "explanation": "A private or reserved address cannot appear in legitimate public transit; this hop was almost certainly injected."
+            }
+          },
+          {
+            "signal": "timestamp_regression",
+            "status": "CLEAR",
+            "confidence": 1.0,
+            "detail": {}
+          },
+          {
+            "signal": "reply_to_domain_mismatch",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "from_domain": "paypa1-secure.tk",
+              "reply_to_domain": "totally-legit-mail.ru",
+              "explanation": "Replies would be delivered to a different domain than the apparent sender."
+            }
+          }
+        ],
+        "M3": [
+          {
+            "signal": "auth_verification_passed",
+            "status": "CLEAR",
+            "confidence": 1.0,
+            "detail": {
+              "summary": "No SPF/DKIM/DMARC failures detected.",
+              "explanation": "Email either has valid authentication or DNS queries were incomplete."
+            }
+          }
+        ],
+        "M4": [
+          {
+            "signal": "credential_harvest_intent",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "explanation": "Email uses login-themed urgency or credential-request language patterns."
+            }
+          },
+          {
+            "signal": "payment_diversion_intent",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "explanation": "Email attempts to redirect payment or modify financial details."
+            }
+          }
+        ],
+        "M5": [
+          {
+            "signal": "origin_anonymized",
+            "status": "CLEAR",
+            "confidence": 1.0,
+            "detail": {
+              "ip": "203.0.113.55",
+              "explanation": "IP 203.0.113.55 is not in Tor/VPN/datacenter lists."
+            }
+          }
+        ],
+        "M6": [
+          {
+            "signal": "domain_no_mx",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "domain": "paypa1-secure.tk",
+              "explanation": "No MX (mail server) records found \u2014 domain is not properly configured to send email."
+            }
+          },
+          {
+            "signal": "domain_does_not_resolve",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "domain": "paypa1-secure.tk",
+              "explanation": "Domain does not resolve (no A record) \u2014 possibly abandoned or spoofed."
+            }
+          }
+        ],
+        "M7": [
+          {
+            "signal": "campaign_infrastructure_reuse",
+            "status": "CLEAR",
+            "confidence": 1.0,
+            "detail": {
+              "summary": "No shared indicators with prior cases.",
+              "indicators_extracted": 3
+            }
+          }
+        ]
+      },
+      "verdict": {
+        "score": 86,
+        "band": "CRITICAL",
+        "confidence": 1.0,
+        "contributions": [
+          {
+            "signal": "reply_to_domain_mismatch",
+            "points": 20.0,
+            "confidence": 1.0,
+            "label": "Reply-To domain differs from From domain"
+          },
+          {
+            "signal": "payment_diversion_intent",
+            "points": 17.0,
+            "confidence": 1.0,
+            "label": "Payment-diversion intent detected"
+          },
+          {
+            "signal": "private_ip_in_public_chain",
+            "points": 16.0,
+            "confidence": 1.0,
+            "label": "Private or reserved IP in a public relay chain"
+          },
+          {
+            "signal": "credential_harvest_intent",
+            "points": 14.0,
+            "confidence": 1.0,
+            "label": "Credential harvesting intent detected"
+          },
+          {
+            "signal": "domain_does_not_resolve",
+            "points": 10.0,
+            "confidence": 1.0,
+            "label": "Domain does not resolve (no A record)"
+          }
+        ]
+      }
+    },
+    "run_2": {
+      "case_id": "1ef98a2c-65b6-40cd-a40c-70cde2fcd962",
+      "analyzers": {
+        "M2": [
+          {
+            "signal": "private_ip_in_public_chain",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "hop": 0,
+              "ip": "127.0.0.1",
+              "explanation": "A private or reserved address cannot appear in legitimate public transit; this hop was almost certainly injected."
+            }
+          },
+          {
+            "signal": "timestamp_regression",
+            "status": "CLEAR",
+            "confidence": 1.0,
+            "detail": {}
+          },
+          {
+            "signal": "reply_to_domain_mismatch",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "from_domain": "paypa1-secure.tk",
+              "reply_to_domain": "totally-legit-mail.ru",
+              "explanation": "Replies would be delivered to a different domain than the apparent sender."
+            }
+          }
+        ],
+        "M3": [
+          {
+            "signal": "auth_verification_passed",
+            "status": "CLEAR",
+            "confidence": 1.0,
+            "detail": {
+              "summary": "No SPF/DKIM/DMARC failures detected.",
+              "explanation": "Email either has valid authentication or DNS queries were incomplete."
+            }
+          }
+        ],
+        "M4": [
+          {
+            "signal": "credential_harvest_intent",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "explanation": "Email uses login-themed urgency or credential-request language patterns."
+            }
+          },
+          {
+            "signal": "payment_diversion_intent",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "explanation": "Email attempts to redirect payment or modify financial details."
+            }
+          }
+        ],
+        "M5": [
+          {
+            "signal": "origin_anonymized",
+            "status": "CLEAR",
+            "confidence": 1.0,
+            "detail": {
+              "ip": "203.0.113.55",
+              "explanation": "IP 203.0.113.55 is not in Tor/VPN/datacenter lists."
+            }
+          }
+        ],
+        "M6": [
+          {
+            "signal": "domain_no_mx",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "domain": "paypa1-secure.tk",
+              "explanation": "No MX (mail server) records found \u2014 domain is not properly configured to send email."
+            }
+          },
+          {
+            "signal": "domain_does_not_resolve",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "domain": "paypa1-secure.tk",
+              "explanation": "Domain does not resolve (no A record) \u2014 possibly abandoned or spoofed."
+            }
+          }
+        ],
+        "M7": [
+          {
+            "signal": "campaign_infrastructure_reuse",
+            "status": "TRIGGERED",
+            "confidence": 0.6,
+            "detail": {
+              "summary": "Shared 3 indicators with prior case(s).",
+              "related_cases": 1,
+              "shared_indicator_count": 3,
+              "indicators_extracted": 3
+            }
+          }
+        ]
+      },
+      "verdict": {
+        "score": 98,
+        "band": "CRITICAL",
+        "confidence": 1.0,
+        "contributions": [
+          {
+            "signal": "reply_to_domain_mismatch",
+            "points": 20.0,
+            "confidence": 1.0,
+            "label": "Reply-To domain differs from From domain"
+          },
+          {
+            "signal": "payment_diversion_intent",
+            "points": 17.0,
+            "confidence": 1.0,
+            "label": "Payment-diversion intent detected"
+          },
+          {
+            "signal": "private_ip_in_public_chain",
+            "points": 16.0,
+            "confidence": 1.0,
+            "label": "Private or reserved IP in a public relay chain"
+          },
+          {
+            "signal": "credential_harvest_intent",
+            "points": 14.0,
+            "confidence": 1.0,
+            "label": "Credential harvesting intent detected"
+          },
+          {
+            "signal": "campaign_infrastructure_reuse",
+            "points": 12.0,
+            "confidence": 0.6,
+            "label": "Infrastructure matches an active campaign"
+          }
+        ]
+      }
+    },
+    "run_3": {
+      "case_id": "f48b57d7-1e5d-4110-a917-ec51543a3cdf",
+      "analyzers": {
+        "M2": [
+          {
+            "signal": "private_ip_in_public_chain",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "hop": 0,
+              "ip": "127.0.0.1",
+              "explanation": "A private or reserved address cannot appear in legitimate public transit; this hop was almost certainly injected."
+            }
+          },
+          {
+            "signal": "timestamp_regression",
+            "status": "CLEAR",
+            "confidence": 1.0,
+            "detail": {}
+          },
+          {
+            "signal": "reply_to_domain_mismatch",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "from_domain": "paypa1-secure.tk",
+              "reply_to_domain": "totally-legit-mail.ru",
+              "explanation": "Replies would be delivered to a different domain than the apparent sender."
+            }
+          }
+        ],
+        "M3": [
+          {
+            "signal": "auth_verification_passed",
+            "status": "CLEAR",
+            "confidence": 1.0,
+            "detail": {
+              "summary": "No SPF/DKIM/DMARC failures detected.",
+              "explanation": "Email either has valid authentication or DNS queries were incomplete."
+            }
+          }
+        ],
+        "M4": [
+          {
+            "signal": "credential_harvest_intent",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "explanation": "Email uses login-themed urgency or credential-request language patterns."
+            }
+          },
+          {
+            "signal": "payment_diversion_intent",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "explanation": "Email attempts to redirect payment or modify financial details."
+            }
+          }
+        ],
+        "M5": [
+          {
+            "signal": "origin_anonymized",
+            "status": "CLEAR",
+            "confidence": 1.0,
+            "detail": {
+              "ip": "203.0.113.55",
+              "explanation": "IP 203.0.113.55 is not in Tor/VPN/datacenter lists."
+            }
+          }
+        ],
+        "M6": [
+          {
+            "signal": "domain_no_mx",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "domain": "paypa1-secure.tk",
+              "explanation": "No MX (mail server) records found \u2014 domain is not properly configured to send email."
+            }
+          },
+          {
+            "signal": "domain_does_not_resolve",
+            "status": "TRIGGERED",
+            "confidence": 1.0,
+            "detail": {
+              "domain": "paypa1-secure.tk",
+              "explanation": "Domain does not resolve (no A record) \u2014 possibly abandoned or spoofed."
+            }
+          }
+        ],
+        "M7": [
+          {
+            "signal": "campaign_infrastructure_reuse",
+            "status": "TRIGGERED",
+            "confidence": 0.6,
+            "detail": {
+              "summary": "Shared 3 indicators with prior case(s).",
+              "related_cases": 2,
+              "shared_indicator_count": 3,
+              "indicators_extracted": 3
+            }
+          }
+        ]
+      },
+      "verdict": {
+        "score": 98,
+        "band": "CRITICAL",
+        "confidence": 1.0,
+        "contributions": [
+          {
+            "signal": "reply_to_domain_mismatch",
+            "points": 20.0,
+            "confidence": 1.0,
+            "label": "Reply-To domain differs from From domain"
+          },
+          {
+            "signal": "payment_diversion_intent",
+            "points": 17.0,
+            "confidence": 1.0,
+            "label": "Payment-diversion intent detected"
+          },
+          {
+            "signal": "private_ip_in_public_chain",
+            "points": 16.0,
+            "confidence": 1.0,
+            "label": "Private or reserved IP in a public relay chain"
+          },
+          {
+            "signal": "credential_harvest_intent",
+            "points": 14.0,
+            "confidence": 1.0,
+            "label": "Credential harvesting intent detected"
+          },
+          {
+            "signal": "campaign_infrastructure_reuse",
+            "points": 12.0,
+            "confidence": 0.6,
+            "label": "Infrastructure matches an active campaign"
+          }
+        ]
+      }
+    }
+  },
+  "verdict": {
+    "final_score": 98,
+    "final_band": "CRITICAL",
+    "final_confidence": 1.0
+  }
+}

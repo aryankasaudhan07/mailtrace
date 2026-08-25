@@ -1,0 +1,8 @@
+{
+  "total": 3,
+  "items": [
+    {"case_id":"6f1c9a1e-0b3d-4c7a-9a11-2e5d8f0a1b21","subject":"URGENT: Updated vendor bank details for invoice INV-2291","from_addr":"accounts@aicte-lndia.org","score":88,"band":"CRITICAL","confidence":0.85,"campaign":"Vendor-Payment-Diversion-01"},
+    {"case_id":"b2d4e6f8-1a3c-4e5f-8a9b-0c1d2e3f4a5b","subject":"Action required: re-verify your institutional mailbox","from_addr":"support@mail-verify-portal.top","score":74,"band":"HIGH_RISK","confidence":0.70,"campaign":null},
+    {"case_id":"c3e5f7a9-2b4d-4f6a-9b0c-1d2e3f4a5b6c","subject":"Minutes of the technical committee meeting","from_addr":"registrar@example.ac.in","score":0,"band":"BENIGN","confidence":0.95,"campaign":null}
+  ]
+}
