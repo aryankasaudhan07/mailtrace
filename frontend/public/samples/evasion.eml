@@ -1,0 +1,14 @@
+Received: by mx.example.ac.in with LMTP id 9xQ2v; Wed, 20 Aug 2026 10:00:03 +0000
+Received: from relay.provider.example ([203.0.113.90]) by mx.example.ac.in with ESMTPS id 4kD1x; Wed, 20 Aug 2026 10:00:02 +0000
+From: PayPal Security <alert@paypa1-secure.tk>
+Reply-To: recovery@account-verify-portal.tk
+Subject: account notice
+Message-ID: <ev1@paypa1-secure.tk>
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body>
+<p>urgеnt: please ver​ify your passwоrd now or your accоunt will be suspended.</p>
+<p>Confirm your identity to restore access.</p>
+<a href="http://secure-login-verify.tk/reset"><img src="cid:banner" alt="Verify"></a>
+</body></html>

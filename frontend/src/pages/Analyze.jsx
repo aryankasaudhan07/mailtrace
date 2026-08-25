@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { UploadCloud, FileText, Loader2, Zap, ShieldAlert, Landmark, ShieldCheck } from 'lucide-react'
+import { UploadCloud, FileText, Loader2, Zap, ShieldAlert, Landmark, ShieldCheck, EyeOff } from 'lucide-react'
 import PageHead from '../components/PageHead.jsx'
 import { api } from '../api.js'
 import './analyze.css'
@@ -8,6 +8,7 @@ import './analyze.css'
 const SAMPLES = [
   { file: 'phishing.eml', label: 'Phishing attack', icon: ShieldAlert, tone: 'crit', desc: 'PayPal credential-harvest lookalike' },
   { file: 'bec.eml', label: 'BEC / wire fraud', icon: Landmark, tone: 'high', desc: 'Injected hop + payment diversion' },
+  { file: 'evasion.eml', label: 'Evasion attempt', icon: EyeOff, tone: 'crit', desc: 'Look-alike + hidden chars dodging filters' },
   { file: 'benign.eml', label: 'Benign control', icon: ShieldCheck, tone: 'benign', desc: 'Legitimate committee email' },
 ]
 
