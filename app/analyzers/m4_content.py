@@ -25,6 +25,7 @@ from google import genai
 from google.genai import types as genai_types
 
 from app.analyzers.base import register
+from app.ingest.text_norm import canonical, obfuscation_report
 from app.schemas.email import ParsedEmail
 from app.schemas.evidence import Analyzer, Evidence
 
@@ -126,9 +127,10 @@ def _get_client() -> genai.Client | None:
 
 def _heuristic_analysis(subject: str, body: str) -> dict:
     """Fallback heuristic analysis using keyword patterns when API unavailable."""
-    # NFKC-fold and strip zero-width chars first, so unicode look-alike and
-    # zero-width-spaced keywords ("ver​ify", full-width chars) still match.
-    text = _normalize(f"{subject} {body}").lower()
+    # De-obfuscate first (fold homoglyphs, strip invisibles) so disguised
+    # keywords ("urgеnt" with a Cyrillic e, "ver​ify" with a zero-width space)
+    # still match the patterns below.
+    text = canonical(f"{subject} {body}")
 
     phishing_keywords = [
         "urgent", "verify", "confirm", "click here", "act now", "suspended",
@@ -236,11 +238,60 @@ async def analyze(case_id: UUID, email: ParsedEmail) -> list[Evidence]:
     else:
         ev.append(Evidence.clear(case_id, Analyzer.M4_CONTENT, "hidden_text_mismatch"))
 
-    # Classify BOTH the visible and the hidden text: a payload buried in hidden
-    # markup (or past a truncation point) must not escape intent analysis.
+    # --- Obfuscation: look-alike (homoglyph) or invisible characters ----------
+    rep = obfuscation_report(f"{email.subject or ''} {email.body_text or ''}")
+    if rep["obfuscated"]:
+        bits = []
+        if rep["mixed_script_count"]:
+            bits.append(f"{rep['mixed_script_count']} mixed-script word(s) e.g. {', '.join(rep['mixed_script_words'])}")
+        if rep["invisible_runs"]:
+            bits.append(f"{rep['invisible_runs']} run(s) of invisible characters between letters")
+        ev.append(
+            Evidence.triggered(
+                case_id, Analyzer.M4_CONTENT, "obfuscated_text",
+                detail={
+                    "mixed_script_words": rep["mixed_script_words"],
+                    "invisible_runs": rep["invisible_runs"],
+                    "explanation": (
+                        "Content is disguised with look-alike or invisible characters ("
+                        + "; ".join(bits) + "). Folded back to real text before classifying "
+                        "so the true intent still scores."
+                    ),
+                },
+            )
+        )
+    else:
+        ev.append(Evidence.clear(case_id, Analyzer.M4_CONTENT, "obfuscated_text"))
+
+    # --- Image-based phishing: external link but almost no readable text ------
+    text_only = re.sub(r"https?://\S+", "", email.body_text or "").strip()
+    ext_urls = [u for u in email.urls if u.domain]
+    if len(text_only) < 20 and ext_urls:
+        ev.append(
+            Evidence.triggered(
+                case_id, Analyzer.M4_CONTENT, "links_no_text",
+                detail={
+                    "visible_text_len": len(text_only),
+                    "link_domains": sorted({u.domain for u in ext_urls})[:5],
+                    "explanation": (
+                        "The message has almost no readable text but carries external "
+                        f"link(s) to {', '.join(sorted({u.domain for u in ext_urls})[:3])} — "
+                        "the classic image-based phishing pattern (URL hidden in a link "
+                        "wrapped around an image)."
+                    ),
+                },
+            )
+        )
+    else:
+        ev.append(Evidence.clear(case_id, Analyzer.M4_CONTENT, "links_no_text"))
+
+    # Classify the visible + hidden text; if disguised, also hand the classifier
+    # a de-obfuscated copy so folded homoglyphs/invisibles can't hide intent.
     body_for_classifier = visible
     if hidden:
         body_for_classifier = f"{visible}\n\n[HIDDEN TEXT EXTRACTED FROM HTML]\n{hidden}"
+    if rep["obfuscated"]:
+        body_for_classifier += f"\n\n[DE-OBFUSCATED]\n{canonical(visible + ' ' + hidden)}"
 
     result = await _call_gemini(email.subject, body_for_classifier)
 

@@ -4,7 +4,7 @@
   "emails": {
     "Phishing Attack": {
       "path": "sample_phishing.eml",
-      "case_id": "d4614228-1291-469f-a625-cee5886ac945",
+      "case_id": "0ab58acb-88cd-4ce5-bcc5-cfa7cc78ed23",
       "sha256": "e895cb93c1729b1453bf5cc92e6e6af91e3d5b13a0a209210cabf441f1e802fe",
       "from": "security@paypa1-secure.tk",
       "subject": "URGENT: Your account will be suspended in 24 hours",
@@ -51,6 +51,16 @@
         "M4": [
           {
             "signal": "hidden_text_mismatch",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "obfuscated_text",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "links_no_text",
             "status": "CLEAR",
             "confidence": 1.0
           },
@@ -127,7 +137,7 @@
     },
     "BEC with Injected Hop": {
       "path": "samples/bec-injected-hop.eml",
-      "case_id": "02f54617-2a8a-4168-a6e2-a3f842922268",
+      "case_id": "65da03f6-f24c-42f3-b734-cb65cf8d04f1",
       "sha256": "0f3e8538eb44723db75b1029b171204903c69641978833f26ea86dd3163dac5e",
       "from": "accounts@example-lnstitute.example",
       "subject": "URGENT: Updated vendor bank details for invoice INV-2291",
@@ -174,6 +184,16 @@
         "M4": [
           {
             "signal": "hidden_text_mismatch",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "obfuscated_text",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "links_no_text",
             "status": "CLEAR",
             "confidence": 1.0
           },
@@ -250,7 +270,7 @@
     },
     "Benign Control Email": {
       "path": "samples/benign-control.eml",
-      "case_id": "08b89561-40d2-49d0-bddb-f3bfbbdce9d3",
+      "case_id": "456d7daa-a931-4f16-abb4-3228a01c1a50",
       "sha256": "d987eb54ead8d6c6c017ebb66dfb60d00c2ee350ae0437ece76d1bd7bbfe9dfd",
       "from": "registrar@example.ac.in",
       "subject": "Minutes of the technical committee meeting",
@@ -297,6 +317,16 @@
         "M4": [
           {
             "signal": "hidden_text_mismatch",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "obfuscated_text",
+            "status": "CLEAR",
+            "confidence": 1.0
+          },
+          {
+            "signal": "links_no_text",
             "status": "CLEAR",
             "confidence": 1.0
           }

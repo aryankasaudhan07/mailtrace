@@ -10,7 +10,7 @@
 #
 # Owner: Track E
 
-version: "1.2.0"
+version: "1.3.0"
 
 bands:
   benign: [0, 24]
@@ -173,6 +173,25 @@ signals:
       AI-assistant prompt injection arrives (CVE-2026-26133) and how attackers
       show a benign message to a person while hiding the real payload. There is
       no legitimate reason to hide substantial text in a message body.
+
+  obfuscated_text:
+    weight: 14
+    analyzer: M4
+    label: "Text disguised with look-alike or invisible characters"
+    rationale: >
+      Mixed-script words (e.g. a Cyrillic 'e' inside a Latin word) or zero-width
+      characters inserted between letters, used to slip keywords past filters.
+      Legitimate mail does not disguise its own words this way. We fold the
+      disguise away before content classification so the real intent still scores.
+
+  links_no_text:
+    weight: 10
+    analyzer: M4
+    label: "External link with little or no readable text"
+    rationale: >
+      Image-based phishing hides the payload URL in a hyperlink wrapped around an
+      image, leaving the body almost text-free so keyword scans find nothing. A
+      near-empty message that still carries an external link is the tell.
 
   # ---------------- M5 :: network intelligence (Track D) ----------------
   origin_anonymized:
