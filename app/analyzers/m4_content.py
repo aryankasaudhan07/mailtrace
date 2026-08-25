@@ -12,6 +12,7 @@ Owner: Track C
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import os
@@ -122,7 +123,9 @@ def _get_client() -> genai.Client | None:
     api_key = os.environ.get("GEMINI_API_KEY")
     if not api_key:
         return None
-    return genai.Client(api_key=api_key)
+    # 5s HTTP timeout so a slow Gemini call can't hang the request; the two-model
+    # fallback then stays within the analyzer lane budget.
+    return genai.Client(api_key=api_key, http_options=genai_types.HttpOptions(timeout=5000))
 
 
 def _heuristic_analysis(subject: str, body: str) -> dict:
@@ -180,7 +183,10 @@ async def _call_gemini(subject: str, body: str) -> dict | None:
 
     for model in MODELS:
         try:
-            response = client.models.generate_content(
+            # Run the blocking SDK call in a thread so it never stalls the event
+            # loop (which would serialise every analyzer and time out the request).
+            response = await asyncio.to_thread(
+                client.models.generate_content,
                 model=model,
                 contents=user_message,
                 config=genai_types.GenerateContentConfig(

@@ -23,7 +23,7 @@ from app.schemas.evidence import Analyzer, Evidence, Status
 
 log = logging.getLogger(__name__)
 
-DEFAULT_TIMEOUT_S = 8.0
+DEFAULT_TIMEOUT_S = 12.0
 
 
 class AnalyzerFn(Protocol):

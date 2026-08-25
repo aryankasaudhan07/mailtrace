@@ -19,6 +19,7 @@ Owner: Track B
 
 from __future__ import annotations
 
+import asyncio
 import re
 from uuid import UUID
 
@@ -159,7 +160,7 @@ def _dmarc_policy(domain: str) -> str | None:
     for i in range(len(labels) - 1):
         candidate = ".".join(labels[i:])
         try:
-            answers = dns.resolver.resolve(f"_dmarc.{candidate}", "TXT", lifetime=5)
+            answers = dns.resolver.resolve(f"_dmarc.{candidate}", "TXT", lifetime=3)
         except Exception:
             continue
         for rr in answers:
@@ -206,16 +207,16 @@ async def analyze(case_id: UUID, email: ParsedEmail) -> list[Evidence]:
     boundary, _hops = authenticated_origin(email)
     client_ip = boundary.from_ip if boundary is not None else None
 
-    spf_ev, spf_pass = _verify_spf(case_id, email, client_ip)
+    spf_ev, spf_pass = await asyncio.to_thread(_verify_spf, case_id, email, client_ip)
     if spf_ev:
         ev.append(spf_ev)
 
-    dkim_ev, dkim_pass = _verify_dkim(case_id, email)
+    dkim_ev, dkim_pass = await asyncio.to_thread(_verify_dkim, case_id, email)
     if dkim_ev:
         ev.append(dkim_ev)
 
     # DMARC passes if EITHER SPF or DKIM produced an aligned pass.
-    dmarc_ev = _verify_dmarc(case_id, email, authenticated=spf_pass or dkim_pass)
+    dmarc_ev = await asyncio.to_thread(_verify_dmarc, case_id, email, spf_pass or dkim_pass)
     if dmarc_ev:
         ev.append(dmarc_ev)
 

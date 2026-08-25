@@ -12,6 +12,7 @@ Owner: Track B
 
 from __future__ import annotations
 
+import asyncio
 import unicodedata
 from datetime import datetime, timezone
 from uuid import UUID
@@ -51,7 +52,7 @@ def _domain_age_days(domain: str) -> int | None:
         return None
 
     try:
-        result = whoisit.query(domain, timeout=5)
+        result = whoisit.query(domain, timeout=4)
 
         if not result or not result.created:
             return None
@@ -78,14 +79,14 @@ def _check_dns(domain: str) -> dict:
         return result
 
     try:
-        answers = dns.resolver.resolve(domain, "MX", lifetime=5)
+        answers = dns.resolver.resolve(domain, "MX", lifetime=3)
         result["has_mx"] = True
         result["mx_records"] = [str(r.exchange).rstrip(".") for r in answers]
     except Exception:
         pass
 
     try:
-        dns.resolver.resolve(domain, "A", lifetime=5)
+        dns.resolver.resolve(domain, "A", lifetime=3)
         result["has_a"] = True
     except Exception:
         pass
@@ -195,7 +196,7 @@ async def analyze(case_id: UUID, email: ParsedEmail) -> list[Evidence]:
         ]
 
     # Check domain age
-    age_days = _domain_age_days(from_domain)
+    age_days = await asyncio.to_thread(_domain_age_days, from_domain)
     if age_days is not None and age_days < 30:
         ev.append(
             Evidence.triggered(
@@ -210,7 +211,7 @@ async def analyze(case_id: UUID, email: ParsedEmail) -> list[Evidence]:
         )
 
     # Check DNS records
-    dns_result = _check_dns(from_domain)
+    dns_result = await asyncio.to_thread(_check_dns, from_domain)
 
     if not dns_result["has_mx"]:
         ev.append(
