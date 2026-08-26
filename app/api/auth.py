@@ -118,6 +118,26 @@ async def register(c: Creds) -> dict:
     return {"token": _sign(store, email), "user": _user_public(store, email)}
 
 
+@router.post("/reset")
+async def reset(c: Creds) -> dict:
+    """
+    Demo-mode password reset: set a new password for an existing account and sign
+    it in. NOTE: production must gate this behind an emailed one-time token — here
+    there is no mail service, so this is intentionally a demo convenience.
+    """
+    store = _load()
+    email = c.email.lower().strip()
+    if email not in store["users"]:
+        raise HTTPException(404, "No account found with that email")
+    if len(c.password) < 6:
+        raise HTTPException(400, "New password must be at least 6 characters")
+    salt = secrets.token_hex(16)
+    store["users"][email]["salt"] = salt
+    store["users"][email]["hash"] = _hash(c.password, salt)
+    _save(store)
+    return {"token": _sign(store, email), "user": _user_public(store, email)}
+
+
 @router.get("/me")
 async def me(authorization: str = Header(default="")) -> dict:
     store = _load()

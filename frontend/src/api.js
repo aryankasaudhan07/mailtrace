@@ -21,6 +21,7 @@ export const api = {
   // auth
   login: (email, password) => j('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) }),
   register: (email, password, name) => j('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name }) }),
+  reset: (email, password) => j('/api/auth/reset', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) }),
   me: () => j('/api/auth/me'),
   // data
   health: () => j('/api/health'),

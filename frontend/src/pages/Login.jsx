@@ -13,25 +13,34 @@ const FEATURES = [
   { icon: ShieldCheck, title: 'Proactive Security', text: 'Stop threats before they reach you' },
 ]
 
+const COPY = {
+  login:    { title: 'Welcome Back',   sub: 'Sign in to your Email Threat Intelligence Platform', cta: 'Sign In' },
+  register: { title: 'Create Account', sub: 'Set up your analyst account to get started',          cta: 'Create Account' },
+  reset:    { title: 'Reset Password', sub: 'Set a new password for your account',                  cta: 'Reset Password' },
+}
+
 export default function Login() {
   const nav = useNavigate()
-  const { login, register } = useAuth()
+  const { login, register, resetPassword } = useAuth()
   const [mode, setMode] = useState('login')
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
-  const [form, setForm] = useState({ email: 'admin@mailtrace.io', password: 'demo1234', name: '' })
+  const [form, setForm] = useState({ email: '', password: '', name: '' })
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
+  const go = (m) => { setMode(m); setErr(null) }
 
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr(null)
     try {
       if (mode === 'login') await login(form.email, form.password)
-      else await register(form.email, form.password, form.name)
+      else if (mode === 'register') await register(form.email, form.password, form.name)
+      else await resetPassword(form.email, form.password)
       nav('/')
     } catch (x) { setErr(String(x.message || x)); setBusy(false) }
   }
 
+  const c = COPY[mode]
   return (
     <div className="login">
       <header className="login-top">
@@ -60,46 +69,53 @@ export default function Login() {
         <section className="authwrap">
           <form className="authcard" onSubmit={submit}>
             <div className="auth-badge"><Mail size={26} /></div>
-            <h2>{mode === 'login' ? 'Welcome Back' : 'Create Account'}</h2>
-            <p className="dim" style={{ textAlign: 'center', marginTop: -4 }}>
-              {mode === 'login' ? 'Sign in to your Email Threat Intelligence Platform' : 'Set up your analyst account'}
-            </p>
+            <h2>{c.title}</h2>
+            <p className="dim" style={{ textAlign: 'center', marginTop: -4 }}>{c.sub}</p>
 
             {err && <div className="auth-err">{err}</div>}
 
             {mode === 'register' && (
               <label className="field"><User size={17} />
-                <input placeholder="Full name" value={form.name} onChange={set('name')} /></label>
+                <input placeholder="Full name" value={form.name} onChange={set('name')} autoComplete="name" /></label>
             )}
             <label className="field"><User size={17} />
-              <input type="email" placeholder="Email address" value={form.email} onChange={set('email')} required /></label>
+              <input type="email" placeholder="Email address" value={form.email} onChange={set('email')}
+                autoComplete="email" required /></label>
             <label className="field"><Lock size={17} />
-              <input type={show ? 'text' : 'password'} placeholder="Password" value={form.password} onChange={set('password')} required />
+              <input type={show ? 'text' : 'password'} placeholder={mode === 'reset' ? 'New password' : 'Password'}
+                value={form.password} onChange={set('password')}
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required />
               <button type="button" className="eye" onClick={() => setShow((s) => !s)}>{show ? <EyeOff size={17} /> : <Eye size={17} />}</button>
             </label>
 
             {mode === 'login' && (
               <div className="auth-row">
-                <label className="remember"><input type="checkbox" defaultChecked /> Remember me</label>
-                <a className="violet-link">Forgot password?</a>
+                <label className="remember"><input type="checkbox" /> Remember me</label>
+                <a className="violet-link" onClick={() => go('reset')}>Forgot password?</a>
               </div>
             )}
 
             <button className="btn" type="submit" disabled={busy} style={{ width: '100%', padding: 13, opacity: busy ? .7 : 1 }}>
-              {busy ? <Loader2 size={17} className="spin" /> : <>{mode === 'login' ? 'Sign In' : 'Create Account'} <ArrowRight size={17} /></>}
+              {busy ? <Loader2 size={17} className="spin" /> : <>{c.cta} <ArrowRight size={17} /></>}
             </button>
 
             <div className="or"><span>or</span></div>
-            {mode === 'login' ? (
+
+            {mode === 'login' && (
               <p className="dim" style={{ textAlign: 'center' }}>
-                Don't have an account? <a className="violet-link" onClick={() => { setMode('register'); setErr(null) }}>Create Account</a>
-              </p>
-            ) : (
-              <p className="dim" style={{ textAlign: 'center' }}>
-                Already have an account? <a className="violet-link" onClick={() => { setMode('login'); setErr(null) }}>Sign In</a>
+                Don't have an account? <a className="violet-link" onClick={() => go('register')}>Create Account</a>
               </p>
             )}
-            <p className="dim" style={{ textAlign: 'center', fontSize: '.76rem' }}>Demo login is pre-filled — just click Sign In.</p>
+            {mode === 'register' && (
+              <p className="dim" style={{ textAlign: 'center' }}>
+                Already have an account? <a className="violet-link" onClick={() => go('login')}>Sign In</a>
+              </p>
+            )}
+            {mode === 'reset' && (
+              <p className="dim" style={{ textAlign: 'center' }}>
+                Remembered it? <a className="violet-link" onClick={() => go('login')}>Back to sign in</a>
+              </p>
+            )}
           </form>
         </section>
       </div>

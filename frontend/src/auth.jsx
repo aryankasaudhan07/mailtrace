@@ -22,9 +22,13 @@ export function AuthProvider({ children }) {
     const r = await api.register(email, password, name)
     setToken(r.token); setUser(r.user); return r.user
   }
+  const resetPassword = async (email, password) => {
+    const r = await api.reset(email, password)
+    setToken(r.token); setUser(r.user); return r.user
+  }
   const logout = () => { setToken(null); setUser(null) }
 
-  return <AuthCtx.Provider value={{ user, ready, login, register, logout }}>{children}</AuthCtx.Provider>
+  return <AuthCtx.Provider value={{ user, ready, login, register, resetPassword, logout }}>{children}</AuthCtx.Provider>
 }
 
 export function RequireAuth({ children }) {
