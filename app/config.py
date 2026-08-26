@@ -26,6 +26,14 @@ class Settings(BaseSettings):
     trusted_mx_cidrs: str = ""
     trusted_providers: str = ""
 
+    # SMTP for password-reset OTP emails. Gmail: set smtp_user to your address and
+    # smtp_password to a Google App Password (needs 2FA). Unset -> demo fallback.
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = ""
+
     intel_dir: str = "./intel"
     maxmind_account_id: str = ""
     maxmind_license_key: str = ""

@@ -59,6 +59,7 @@
 .or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line-2); }
 
 .auth-err { background: var(--crit-bg); color: var(--crit); border-radius: 12px; padding: 10px 13px; font-size: .84rem; }
+.auth-info { background: var(--violet-dim); color: var(--violet); border-radius: 12px; padding: 10px 13px; font-size: .84rem; font-weight: 600; }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .login-foot { text-align: center; color: var(--text-2); font-size: .86rem; padding-top: 14px;

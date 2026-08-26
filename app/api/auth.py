@@ -10,16 +10,21 @@ store for a real DB before production.
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import hmac
 import json
 import secrets
+import smtplib
 import time
+from email.message import EmailMessage
 from pathlib import Path
 
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel
+
+from app.config import settings
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
@@ -118,15 +123,75 @@ async def register(c: Creds) -> dict:
     return {"token": _sign(store, email), "user": _user_public(store, email)}
 
 
-@router.post("/reset")
-async def reset(c: Creds) -> dict:
-    """
-    Demo-mode password reset: set a new password for an existing account and sign
-    it in. NOTE: production must gate this behind an emailed one-time token — here
-    there is no mail service, so this is intentionally a demo convenience.
-    """
+# --- Password reset via emailed one-time code (OTP) --------------------------
+_OTP: dict[str, tuple[str, float]] = {}   # email -> (code, expiry). In-memory.
+_OTP_TTL = 600  # 10 minutes
+
+
+class EmailOnly(BaseModel):
+    email: str
+
+
+class ResetVerify(BaseModel):
+    email: str
+    otp: str
+    password: str
+
+
+def _send_otp_email(to: str, otp: str) -> bool:
+    """Send the OTP via SMTP. Returns False if SMTP isn't configured or fails."""
+    cfg = settings()
+    if not (cfg.smtp_user and cfg.smtp_password):
+        return False
+    msg = EmailMessage()
+    msg["Subject"] = "Your Mailtrace password reset code"
+    msg["From"] = cfg.smtp_from or cfg.smtp_user
+    msg["To"] = to
+    msg.set_content(
+        f"Your Mailtrace password reset code is: {otp}\n\n"
+        "It expires in 10 minutes. If you didn't request this, ignore this email."
+    )
+    try:
+        with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=10) as s:
+            s.starttls()
+            s.login(cfg.smtp_user, cfg.smtp_password)
+            s.send_message(msg)
+        return True
+    except Exception:
+        return False
+
+
+@router.post("/reset/request")
+async def reset_request(c: EmailOnly) -> dict:
+    """Step 1: email a 6-digit reset code to an existing account."""
     store = _load()
     email = c.email.lower().strip()
+    if email not in store["users"]:
+        raise HTTPException(404, "No account found with that email")
+    otp = f"{secrets.randbelow(1_000_000):06d}"
+    _OTP[email] = (otp, time.time() + _OTP_TTL)
+    sent = await asyncio.to_thread(_send_otp_email, email, otp)
+    resp = {"sent": sent}
+    if not sent:
+        # Demo fallback: no SMTP configured, so surface the code so the flow is
+        # usable. With SMTP set (Gmail app password) the code is emailed instead.
+        resp["demo_otp"] = otp
+        resp["message"] = "Email not configured — showing the code for the demo."
+    else:
+        resp["message"] = "A reset code has been emailed to you."
+    return resp
+
+
+@router.post("/reset/verify")
+async def reset_verify(c: ResetVerify) -> dict:
+    """Step 2: verify the code and set a new password (then sign in)."""
+    store = _load()
+    email = c.email.lower().strip()
+    rec = _OTP.get(email)
+    if not rec or rec[1] < time.time():
+        raise HTTPException(400, "Code expired or not requested — request a new one")
+    if not hmac.compare_digest(rec[0], c.otp.strip()):
+        raise HTTPException(400, "Incorrect code")
     if email not in store["users"]:
         raise HTTPException(404, "No account found with that email")
     if len(c.password) < 6:
@@ -135,6 +200,7 @@ async def reset(c: Creds) -> dict:
     store["users"][email]["salt"] = salt
     store["users"][email]["hash"] = _hash(c.password, salt)
     _save(store)
+    _OTP.pop(email, None)
     return {"token": _sign(store, email), "user": _user_public(store, email)}
 
 

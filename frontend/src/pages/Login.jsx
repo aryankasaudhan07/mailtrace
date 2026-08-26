@@ -1,7 +1,7 @@
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import {
-  Mail, Cpu, MapPin, Scale, ShieldCheck, User, Lock, Eye, EyeOff, ArrowRight, Clock, Loader2,
+  Mail, Cpu, MapPin, Scale, ShieldCheck, User, Lock, KeyRound, Eye, EyeOff, ArrowRight, Clock, Loader2,
 } from 'lucide-react'
 import { useAuth } from '../auth.jsx'
 import './login.css'
@@ -13,34 +13,49 @@ const FEATURES = [
   { icon: ShieldCheck, title: 'Proactive Security', text: 'Stop threats before they reach you' },
 ]
 
-const COPY = {
-  login:    { title: 'Welcome Back',   sub: 'Sign in to your Email Threat Intelligence Platform', cta: 'Sign In' },
-  register: { title: 'Create Account', sub: 'Set up your analyst account to get started',          cta: 'Create Account' },
-  reset:    { title: 'Reset Password', sub: 'Set a new password for your account',                  cta: 'Reset Password' },
-}
-
 export default function Login() {
   const nav = useNavigate()
-  const { login, register, resetPassword } = useAuth()
-  const [mode, setMode] = useState('login')
+  const { login, register, resetRequest, resetVerify } = useAuth()
+  const [mode, setMode] = useState('login')          // login | register | reset
+  const [step, setStep] = useState('request')        // reset sub-step: request | verify
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
-  const [form, setForm] = useState({ email: '', password: '', name: '' })
+  const [info, setInfo] = useState(null)
+  const [form, setForm] = useState({ email: '', password: '', name: '', otp: '' })
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
-  const go = (m) => { setMode(m); setErr(null) }
+  const go = (m) => { setMode(m); setStep('request'); setErr(null); setInfo(null) }
+
+  const title = mode === 'login' ? 'Welcome Back'
+    : mode === 'register' ? 'Create Account'
+    : step === 'request' ? 'Reset Password' : 'Enter reset code'
+  const sub = mode === 'login' ? 'Sign in to your Email Threat Intelligence Platform'
+    : mode === 'register' ? 'Set up your analyst account to get started'
+    : step === 'request' ? 'Enter your email and we’ll send a reset code'
+    : `Enter the 6-digit code sent to ${form.email}`
+  const cta = mode === 'login' ? 'Sign In'
+    : mode === 'register' ? 'Create Account'
+    : step === 'request' ? 'Send reset code' : 'Reset password'
 
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr(null)
     try {
-      if (mode === 'login') await login(form.email, form.password)
-      else if (mode === 'register') await register(form.email, form.password, form.name)
-      else await resetPassword(form.email, form.password)
-      nav('/')
+      if (mode === 'login') { await login(form.email, form.password); nav('/') }
+      else if (mode === 'register') { await register(form.email, form.password, form.name); nav('/') }
+      else if (mode === 'reset' && step === 'request') {
+        const r = await resetRequest(form.email)
+        setInfo(r.demo_otp
+          ? `Demo mode (email not configured): your code is ${r.demo_otp}`
+          : 'A 6-digit reset code has been emailed to you.')
+        if (r.demo_otp) setForm((f) => ({ ...f, otp: r.demo_otp }))
+        setStep('verify'); setBusy(false)
+      } else {
+        await resetVerify(form.email, form.otp, form.password); nav('/')
+      }
     } catch (x) { setErr(String(x.message || x)); setBusy(false) }
   }
 
-  const c = COPY[mode]
+  const showEmail = !(mode === 'reset' && step === 'verify')
   return (
     <div className="login">
       <header className="login-top">
@@ -57,10 +72,10 @@ export default function Login() {
           <p className="hero-sub">Analyze. Detect. Investigate.<br />Smarter Email Security for a Safer Tomorrow.</p>
           <div className="orb"><div className="orb-shield"><Mail size={44} /></div><div className="ring r1" /><div className="ring r2" /></div>
           <div className="features">
-            {FEATURES.map(({ icon: Icon, title, text }) => (
-              <div className="feature" key={title}>
+            {FEATURES.map(({ icon: Icon, title: t, text }) => (
+              <div className="feature" key={t}>
                 <div className="feature-ic"><Icon size={20} /></div>
-                <div><div className="feature-t">{title}</div><div className="feature-x">{text}</div></div>
+                <div><div className="feature-t">{t}</div><div className="feature-x">{text}</div></div>
               </div>
             ))}
           </div>
@@ -69,24 +84,34 @@ export default function Login() {
         <section className="authwrap">
           <form className="authcard" onSubmit={submit}>
             <div className="auth-badge"><Mail size={26} /></div>
-            <h2>{c.title}</h2>
-            <p className="dim" style={{ textAlign: 'center', marginTop: -4 }}>{c.sub}</p>
+            <h2>{title}</h2>
+            <p className="dim" style={{ textAlign: 'center', marginTop: -4 }}>{sub}</p>
 
             {err && <div className="auth-err">{err}</div>}
+            {info && <div className="auth-info">{info}</div>}
 
             {mode === 'register' && (
               <label className="field"><User size={17} />
                 <input placeholder="Full name" value={form.name} onChange={set('name')} autoComplete="name" /></label>
             )}
-            <label className="field"><User size={17} />
-              <input type="email" placeholder="Email address" value={form.email} onChange={set('email')}
-                autoComplete="email" required /></label>
-            <label className="field"><Lock size={17} />
-              <input type={show ? 'text' : 'password'} placeholder={mode === 'reset' ? 'New password' : 'Password'}
-                value={form.password} onChange={set('password')}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required />
-              <button type="button" className="eye" onClick={() => setShow((s) => !s)}>{show ? <EyeOff size={17} /> : <Eye size={17} />}</button>
-            </label>
+            {showEmail && (
+              <label className="field"><User size={17} />
+                <input type="email" placeholder="Email address" value={form.email} onChange={set('email')}
+                  autoComplete="email" required /></label>
+            )}
+            {mode === 'reset' && step === 'verify' && (
+              <label className="field"><KeyRound size={17} />
+                <input inputMode="numeric" maxLength={6} placeholder="6-digit code" value={form.otp}
+                  onChange={set('otp')} required /></label>
+            )}
+            {(mode !== 'reset' || step === 'verify') && (
+              <label className="field"><Lock size={17} />
+                <input type={show ? 'text' : 'password'} placeholder={mode === 'reset' ? 'New password' : 'Password'}
+                  value={form.password} onChange={set('password')}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required />
+                <button type="button" className="eye" onClick={() => setShow((s) => !s)}>{show ? <EyeOff size={17} /> : <Eye size={17} />}</button>
+              </label>
+            )}
 
             {mode === 'login' && (
               <div className="auth-row">
@@ -96,7 +121,7 @@ export default function Login() {
             )}
 
             <button className="btn" type="submit" disabled={busy} style={{ width: '100%', padding: 13, opacity: busy ? .7 : 1 }}>
-              {busy ? <Loader2 size={17} className="spin" /> : <>{c.cta} <ArrowRight size={17} /></>}
+              {busy ? <Loader2 size={17} className="spin" /> : <>{cta} <ArrowRight size={17} /></>}
             </button>
 
             <div className="or"><span>or</span></div>
@@ -113,7 +138,8 @@ export default function Login() {
             )}
             {mode === 'reset' && (
               <p className="dim" style={{ textAlign: 'center' }}>
-                Remembered it? <a className="violet-link" onClick={() => go('login')}>Back to sign in</a>
+                {step === 'verify' && <><a className="violet-link" onClick={() => { setStep('request'); setErr(null); setInfo(null) }}>Resend code</a> · </>}
+                <a className="violet-link" onClick={() => go('login')}>Back to sign in</a>
               </p>
             )}
           </form>
