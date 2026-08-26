@@ -282,8 +282,8 @@ async def get_artifacts(case_id: UUID) -> dict:
     from_domain = email.from_addr.split("@")[-1].lower() if email.from_addr else None
     domains = sorted({u.domain for u in email.urls if u.domain} | ({from_domain} if from_domain else set()))
     urls = [
-        {"url": u.url, "domain": u.domain, "shortened": u.is_shortened,
-         "mismatched": u.mismatched_anchor}
+        {"url": u.url, "domain": u.domain, "display": u.display_text,
+         "shortened": u.is_shortened, "mismatched": u.mismatched_anchor}
         for u in email.urls
     ]
     emails = sorted({a for a in (email.from_addr, email.reply_to, email.return_path) if a})
