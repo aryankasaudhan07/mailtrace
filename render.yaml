@@ -1,7 +1,7 @@
 # Render blueprint — deploys Mailtrace as one Docker web service that serves
 # both the API and the React UI. Push this repo to GitHub, then in Render:
 #   New +  →  Blueprint  →  pick this repo  →  Apply.
-# After the first deploy, set the two secret env vars in the dashboard (optional).
+# After the first deploy, set the secret env vars in the dashboard (optional).
 services:
   - type: web
     name: mailtrace
@@ -17,4 +17,12 @@ services:
       - key: GEMINI_API_KEY
         sync: false
       - key: ABUSEIPDB_KEY
+        sync: false
+      # Password-reset OTP email (Gmail). Set SMTP_PASSWORD to a Google App
+      # Password (requires 2FA). Leave unset to keep the demo fallback.
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
         sync: false
