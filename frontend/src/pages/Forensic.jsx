@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import {
   Loader2, Download, Globe, Link2, Paperclip, AtSign, Hash, FileText,
   CheckCircle2, XCircle, Send, Server, Inbox, ShieldCheck,
 } from 'lucide-react'
 import PageHead from '../components/PageHead.jsx'
-import { api } from '../api.js'
+import { api, bandInfo, classify } from '../api.js'
 import './forensic.css'
 
 const TABS = ['Overview', 'Headers', 'URLs', 'Domains', 'IPs', 'Attachments', 'Raw']
@@ -20,7 +20,7 @@ export default function Forensic() {
   useEffect(() => {
     let ok = true
     Promise.all([api.getCase(id), api.headers(id), api.evidence(id), api.trace(id), api.artifacts(id)])
-      .then(([c, h, e, t, a]) => ok && setD({ c, headers: h.headers, ev: e.records, hops: t.hops, boundary: t.boundary_seq, art: a }))
+      .then(([c, h, e, t, a]) => ok && setD({ c, headers: h.headers, ev: e.records, hops: t.hops, art: a }))
       .catch((x) => ok && setErr(String(x.message || x)))
     return () => { ok = false }
   }, [id])
@@ -29,6 +29,11 @@ export default function Forensic() {
   if (!d) return <div><PageHead title="Forensic Analysis" /><div className="card center"><Loader2 className="spin" /> Loading…</div></div>
 
   const { c, headers, ev, hops, art } = d
+  const v = c.verdict
+  const info = bandInfo(v.band)
+  const cls = classify(v.contributions || [])
+  const conf = Math.round((v.confidence || 0) * 100)
+
   const trig = (sig) => ev.find((r) => r.signal === sig && r.status === 'TRIGGERED')
   const clear = (sig) => ev.find((r) => r.signal === sig && r.status === 'CLEAR')
   const authStatus = (fail, ...clears) => trig(fail) ? 'fail' : clears.some(clear) || clear('auth_verification_passed') ? 'pass' : 'skip'
@@ -42,6 +47,19 @@ export default function Forensic() {
     <div>
       <PageHead title="Forensic Analysis" back={{ to: `/result/${id}`, label: 'Back to Result' }}
         actions={<a className="btn ghost" href={`/api/cases/${id}/report/text`} target="_blank" rel="noreferrer"><Download size={16} /> Report</a>} />
+
+      {/* persistent verdict strip — same context as the Result page */}
+      <div className="fo-verdict card">
+        <div className="fv-score">
+          <div className={'fv-num ' + info.key}>{v.score}<span>/100</span></div>
+          <span className={'badge ' + info.key}>{info.risk}</span>
+        </div>
+        <FvBlock k="Classification" v={cls} />
+        <FvBlock k="Confidence" v={`${conf}%`} />
+        <FvBlock k="Scorer" v={`v${v.scorer_version}`} />
+        <FvBlock k="Received hops" v={art.ips.length} />
+        <FvBlock k="Extracted IOCs" v={art.ips.length + art.domains.length + art.urls.length + art.emails.length + art.hashes.length} />
+      </div>
 
       <div className="tabbar">
         {TABS.map((t) => {
@@ -59,23 +77,29 @@ export default function Forensic() {
         <div className="fo-grid">
           <div className="fo-main">
             <div className="card">
-              <div className="card-title">Email Headers</div>
+              <div className="card-title">Email headers</div>
               <pre className="rawhdr">{headers.slice(0, 14).map((h) => `${h.name}: ${h.value}`).join('\n')}</pre>
             </div>
-            <IndicatorCounts art={art} c={c} ev={ev} />
+            <IndicatorTiles art={art} c={c} />
           </div>
           <div className="fo-side">
             <div className="card">
-              <div className="card-title">Summary</div>
-              <SummaryRows c={c} art={art} ev={ev} auth={auth} />
+              <div className="card-title">Message facts</div>
+              <div className="inforows">
+                <Fact k="From" v={c.from_addr} />
+                <Fact k="Reply-To" v={c.reply_to} />
+                <Fact k="Return-Path" v={c.return_path} />
+                <Fact k="Subject" v={c.subject} />
+                <Fact k="Message ID" v={c.message_id} mono />
+              </div>
             </div>
             <div className="card">
-              <div className="card-title">Email Timeline</div>
+              <div className="card-title">Email timeline</div>
               <Timeline hops={hops} />
             </div>
           </div>
           <div className="card fo-auth">
-            <div className="card-title">Authentication Results</div>
+            <div className="card-title">Authentication results</div>
             <div className="authrow">
               <AuthCard name="SPF" full="Sender Policy Framework" status={auth.SPF} />
               <AuthCard name="DKIM" full="DomainKeys Identified Mail" status={auth.DKIM} />
@@ -87,7 +111,7 @@ export default function Forensic() {
 
       {tab === 'Headers' && (
         <div className="card">
-          <div className="card-title">Raw Headers ({headers.length})</div>
+          <div className="card-title">Raw headers ({headers.length})</div>
           <div className="hdrlist">
             {headers.map((h, i) => (
               <div className="hdrline" key={i}>
@@ -100,14 +124,25 @@ export default function Forensic() {
         </div>
       )}
 
-      {tab === 'URLs' && <IocTable title="URLs" icon={Link2} rows={art.urls.map((u) => [u.url, u.mismatched ? 'Anchor mismatch' : u.shortened ? 'Shortened' : u.domain])} cols={['URL', 'Note']} />}
-      {tab === 'Domains' && <IocTable title="Domains" icon={Globe} rows={art.domains.map((x) => [x])} cols={['Domain']} />}
-      {tab === 'IPs' && <IocTable title="IP Addresses" icon={Server} rows={art.ips.map((x) => [x.ip, `hop ${x.hop}`, x.trust])} cols={['IP', 'Position', 'Trust']} badge={2} />}
+      {tab === 'URLs' && (
+        <IocTable title="URLs" icon={Link2}
+          cols={['URL', 'Note']}
+          rows={art.urls.map((u) => [u.url, u.mismatched ? 'Anchor mismatch' : u.shortened ? 'Shortened' : (u.domain || '—')])}
+          badgeCol={1}
+          tone={(val) => val === 'Anchor mismatch' ? 'crit' : val === 'Shortened' ? 'med' : null} />
+      )}
+      {tab === 'Domains' && <IocTable title="Domains" icon={Globe} cols={['Domain']} rows={art.domains.map((x) => [x])} />}
+      {tab === 'IPs' && (
+        <IocTable title="IP addresses" icon={Server}
+          cols={['IP', 'Position', 'Trust']}
+          rows={art.ips.map((x) => [x.ip, `hop ${x.hop}`, x.trust])}
+          badgeCol={2} tone={(val) => TRUST[val] || 'med'} />
+      )}
       {tab === 'Attachments' && (
         <div className="card">
           <div className="card-title">Attachments ({art.attachments.length})</div>
           {art.attachments.length ? art.attachments.map((a, i) => {
-            const exe = /octet-stream|msdownload|\.exe|\.scr|\.js$/.test((a.content_type || '') + (a.filename || ''))
+            const exe = /octet-stream|msdownload|\.exe|\.scr|\.js$|\.html?$|\.svg$/.test((a.content_type || '') + (a.filename || ''))
             return (
               <div className="att" key={i}>
                 <div className={'att-ic ' + (exe ? 'crit' : 'low')}><FileText size={20} /></div>
@@ -121,26 +156,21 @@ export default function Forensic() {
         </div>
       )}
       {tab === 'Raw' && (
-        <div className="card"><div className="card-title">Raw Message</div>
+        <div className="card"><div className="card-title">Raw message</div>
           <pre className="rawhdr" style={{ maxHeight: 600 }}>{art.raw || '(unavailable)'}</pre></div>
       )}
     </div>
   )
 }
 
-function SummaryRows({ c, art, auth }) {
-  const rows = [
-    ['Received hops', art.ips.length], ['Message ID', c.message_id ? 1 : 0],
-    ['Return path', c.return_path ? 1 : 0], ['SPF result', auth.SPF], ['DKIM result', auth.DKIM], ['DMARC result', auth.DMARC],
-  ]
-  const tone = (v) => v === 'fail' ? 'crit' : v === 'pass' ? 'benign' : v === 'skip' ? 'med' : null
+function FvBlock({ k, v }) {
+  return <div className="fv-block"><div className="dim">{k}</div><div className="fv-val">{v}</div></div>
+}
+
+function Fact({ k, v, mono }) {
   return (
-    <div className="inforows">
-      {rows.map(([k, v], i) => (
-        <div className="inforow" key={i}><span className="dim">{k}</span>
-          {tone(v) ? <span className={'badge ' + tone(v)}>{v === 'skip' ? 'n/a' : v}</span> : <b>{v}</b>}</div>
-      ))}
-    </div>
+    <div className="inforow"><span className="dim">{k}</span>
+      <span className={'infoval' + (mono ? ' mono' : '')} title={v || ''}>{v || '—'}</span></div>
   )
 }
 
@@ -164,20 +194,24 @@ function Timeline({ hops }) {
   )
 }
 
-function IndicatorCounts({ art, c, ev }) {
-  const headerIssues = ev.filter((r) => r.analyzer === 'M2' && r.status === 'TRIGGERED').length
+function IndicatorTiles({ art, c }) {
   const items = [
-    [Globe, 'IP Addresses', art.ips.length, 'var(--info)'], [Globe, 'Domains', art.domains.length, 'var(--high)'],
-    [Link2, 'URLs', c.url_count, 'var(--violet)'], [AtSign, 'Email Addresses', art.emails.length, 'var(--low)'],
-    [Hash, 'Hashes', art.hashes.length, 'var(--info)'], [Paperclip, 'Attachments', c.attachment_count, 'var(--med)'],
+    [Globe, 'IP Addresses', art.ips.length, 'info'],
+    [Globe, 'Domains', art.domains.length, 'high'],
+    [Link2, 'URLs', c.url_count ?? art.urls.length, 'violet'],
+    [AtSign, 'Email Addresses', art.emails.length, 'low'],
+    [Hash, 'Hashes', art.hashes.length, 'med'],
+    [Paperclip, 'Attachments', c.attachment_count ?? art.attachments.length, 'crit'],
   ]
   return (
     <div className="card">
-      <div className="card-title">Extracted Indicators</div>
-      <div className="ioc-counts">
-        {items.map(([Icon, label, n, color], i) => (
-          <div className="ioc-count" key={i}>
-            <Icon size={17} style={{ color }} /><span>{label}</span><b>{n}</b>
+      <div className="card-title">Extracted indicators</div>
+      <div className="ind-tiles">
+        {items.map(([Icon, label, n, tone], i) => (
+          <div className="ind-tile" key={i}>
+            <div className={'ind-ic ' + tone}><Icon size={17} /></div>
+            <div className="ind-n">{n ?? 0}</div>
+            <div className="ind-l">{label}</div>
           </div>
         ))}
       </div>
@@ -193,19 +227,27 @@ function AuthCard({ name, full, status }) {
     <div className="authcard-f">
       <div className={'auth-ic ' + tone}><Icon size={22} /></div>
       <div><div style={{ fontWeight: 650 }}>{name}</div><div className="dim" style={{ fontSize: '.78rem' }}>{full}</div>
-        <div style={{ color: `var(--${tone === 'low' ? 'low' : tone === 'med' ? 'med' : 'crit'})`, fontSize: '.82rem', fontWeight: 600, marginTop: 3 }}>
+        <div style={{ color: `var(--${tone})`, fontSize: '.82rem', fontWeight: 600, marginTop: 3 }}>
           {ok ? 'Passed' : skip ? 'Not enforced' : 'Failed'}</div></div>
     </div>
   )
 }
 
-function IocTable({ title, icon: Icon, rows, cols }) {
+function IocTable({ title, icon: Icon, rows, cols, badgeCol, tone }) {
   return (
     <div className="card">
       <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon size={17} /> {title} ({rows.length})</div>
       {rows.length ? (
-        <table className="breakdown"><thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr></thead>
-          <tbody>{rows.map((r, i) => <tr key={i}>{r.map((cell, j) => <td key={j} className={j === 0 ? 'mono' : 'muted'}>{cell}</td>)}</tr>)}</tbody>
+        <table className="ftable"><thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+          <tbody>{rows.map((r, i) => (
+            <tr key={i}>{r.map((cell, j) => {
+              if (j === badgeCol) {
+                const tn = tone ? tone(cell) : null
+                return <td key={j}>{tn ? <span className={'badge ' + tn}>{cell}</span> : <span className="muted">{cell}</span>}</td>
+              }
+              return <td key={j} className={j === 0 ? 'mono ftrunc' : 'muted'}>{cell}</td>
+            })}</tr>
+          ))}</tbody>
         </table>
       ) : <div className="muted center">None extracted.</div>}
     </div>

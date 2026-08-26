@@ -1,7 +1,18 @@
+/* ---- persistent verdict strip ---- */
+.fo-verdict { display: flex; align-items: center; gap: 26px; padding: 16px 22px; margin-bottom: 16px; flex-wrap: wrap; }
+.fv-score { display: flex; align-items: center; gap: 12px; padding-right: 26px; border-right: 1px solid var(--line); }
+.fv-num { font-size: 2rem; font-weight: 800; line-height: 1; }
+.fv-num span { font-size: .8rem; font-weight: 600; color: var(--text-3); margin-left: 2px; }
+.fv-num.crit { color: var(--crit); } .fv-num.high { color: var(--high); }
+.fv-num.med { color: var(--med); } .fv-num.benign { color: var(--benign); }
+.fv-block .fv-val { font-weight: 700; font-size: .95rem; margin-top: 3px; }
+@media (max-width: 760px) { .fv-score { border-right: none; padding-right: 0; } }
+
+/* ---- tabs ---- */
 .tabbar { display: flex; gap: 4px; background: var(--card); border: 1px solid var(--line);
   border-radius: 11px; padding: 5px; margin-bottom: 20px; overflow-x: auto; }
 .tab { background: none; border: none; color: var(--text-2); font-size: .87rem; font-weight: 550;
-  padding: 9px 15px; border-radius: 8px; white-space: nowrap; display: flex; align-items: center; gap: 7px; }
+  padding: 9px 15px; border-radius: 8px; white-space: nowrap; display: flex; align-items: center; gap: 7px; cursor: pointer; }
 .tab:hover { color: var(--text); }
 .tab.on { background: var(--violet-dim); color: var(--violet); }
 .tab-n { background: var(--line-2); color: var(--text-2); font-size: .72rem; padding: 1px 7px; border-radius: 20px; }
@@ -16,17 +27,32 @@
   font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .78rem; line-height: 1.7;
   color: #c7d0e8; overflow: auto; white-space: pre-wrap; word-break: break-all; margin: 0; }
 
-.ioc-counts { display: flex; flex-direction: column; gap: 2px; }
-.ioc-count { display: flex; align-items: center; gap: 11px; padding: 11px 2px; border-bottom: 1px solid var(--line); font-size: .9rem; }
-.ioc-count:last-child { border-bottom: none; }
-.ioc-count span { flex: 1; color: var(--text-2); }
-.ioc-count b { font-size: 1.02rem; }
+/* ---- indicator tiles (matches Result page motif) ---- */
+.ind-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.ind-tile { border: 1px solid var(--line); border-radius: var(--radius-sm); background: var(--card-2); padding: 14px; }
+.ind-ic { width: 38px; height: 38px; border-radius: 11px; display: grid; place-items: center; margin-bottom: 10px; }
+.ind-ic.violet { color: var(--violet); background: var(--violet-dim); }
+.ind-ic.low { color: var(--low); background: var(--low-bg); }
+.ind-ic.med { color: var(--med); background: var(--med-bg); }
+.ind-ic.high { color: var(--high); background: var(--high-bg); }
+.ind-ic.crit { color: var(--crit); background: var(--crit-bg); }
+.ind-ic.info { color: var(--info); background: rgba(57, 101, 255, 0.12); }
+.ind-n { font-size: 1.5rem; font-weight: 800; line-height: 1; }
+.ind-l { color: var(--text-2); font-size: .8rem; margin-top: 3px; }
 
+/* ---- info rows ---- */
+.inforows { display: flex; flex-direction: column; gap: 12px; }
+.inforow { display: flex; justify-content: space-between; gap: 14px; font-size: .87rem; }
+.infoval { text-align: right; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 62%; }
+.mono { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .8rem; }
+
+/* ---- timeline ---- */
 .timeline { display: flex; flex-direction: column; gap: 4px; }
-.tl-item { display: flex; gap: 12px; align-items: center; padding: 8px 0; position: relative; }
+.tl-item { display: flex; gap: 12px; align-items: center; padding: 8px 0; }
 .tl-ic { width: 32px; height: 32px; border-radius: 9px; background: var(--violet-dim); color: var(--violet);
   display: grid; place-items: center; flex-shrink: 0; }
 
+/* ---- auth cards ---- */
 .authrow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
 .authcard-f { display: flex; gap: 12px; align-items: flex-start; background: var(--card-2);
   border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
@@ -35,17 +61,33 @@
 .auth-ic.crit { color: var(--crit); background: var(--crit-bg); }
 .auth-ic.med { color: var(--med); background: var(--med-bg); }
 
+/* ---- headers list ---- */
 .hdrlist { display: flex; flex-direction: column; }
 .hdrline { display: flex; gap: 12px; align-items: baseline; padding: 9px 0; border-bottom: 1px solid var(--line); font-size: .8rem; }
 .hdrline:last-child { border-bottom: none; }
 .hdr-k { color: var(--violet); min-width: 150px; flex-shrink: 0; }
 .hdr-v { color: var(--text-2); flex: 1; word-break: break-all; }
 
+/* ---- IOC tables (matches Result url-tbl) ---- */
+.ftable { width: 100%; border-collapse: collapse; font-size: .84rem; table-layout: fixed; }
+.ftable th { text-align: left; color: var(--text-3); font-weight: 600; padding: 8px 10px;
+  border-bottom: 1px solid var(--line); font-size: .76rem; }
+.ftable td { padding: 11px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.ftable tr:last-child td { border-bottom: none; }
+.ftrunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 0; }
+.ftable th:nth-child(2), .ftable th:nth-child(3),
+.ftable td:nth-child(2), .ftable td:nth-child(3) { width: 130px; }
+
+/* ---- attachments ---- */
 .att { display: flex; align-items: center; gap: 13px; background: var(--card-2); border: 1px solid var(--line);
   border-radius: 11px; padding: 14px; margin-top: 10px; }
 .att-ic { width: 44px; height: 44px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
 .att-ic.crit { color: var(--crit); background: var(--crit-bg); }
 .att-ic.low { color: var(--low); background: var(--low-bg); }
-.att-body { flex: 1; }
+.att-body { flex: 1; min-width: 0; }
 
-@media (max-width: 1050px) { .fo-grid { grid-template-columns: 1fr; } .authrow { grid-template-columns: 1fr; } }
+@media (max-width: 1050px) {
+  .fo-grid { grid-template-columns: 1fr; }
+  .authrow { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) { .ind-tiles { grid-template-columns: 1fr 1fr; } }
