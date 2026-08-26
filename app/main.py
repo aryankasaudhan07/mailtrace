@@ -69,12 +69,16 @@ async def health() -> dict:
     from app.analyzers.base import registry
 
     rules = load_rules()
+    cfg = settings()
     return {
         "status": "ok",
-        "fixture_mode": settings().fixture_mode,
+        "fixture_mode": cfg.fixture_mode,
         "scorer_version": rules.version,
         "signals_defined": len(rules.signals),
         "analyzers_registered": sorted(a.value for a in registry()),
+        # Boolean only -- never the credentials. Lets us confirm OTP email is
+        # wired without exposing any secret.
+        "smtp_configured": bool(cfg.smtp_user and cfg.smtp_password),
     }
 
 
