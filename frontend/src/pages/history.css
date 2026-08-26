@@ -9,7 +9,10 @@
 .chip.on { background: var(--violet-dim); border-color: var(--violet); color: var(--violet); }
 
 .hist-table { table-layout: auto; }
-.hrow { cursor: pointer; }
 .hcell { display: flex; align-items: center; gap: 11px; }
-.hicon { width: 32px; height: 32px; border-radius: 8px; background: #4d8dff14; color: var(--info); display: grid; place-items: center; flex-shrink: 0; }
+.hicon { width: 34px; height: 34px; border-radius: 9px; background: rgba(57, 101, 255, 0.12); color: var(--info); display: grid; place-items: center; flex-shrink: 0; }
+.hicon.crit { background: var(--crit-bg); color: var(--crit); }
+.hicon.high { background: var(--high-bg); color: var(--high); }
+.hicon.med { background: var(--med-bg); color: var(--med); }
+.hicon.benign { background: var(--low-bg); color: var(--low); }
 .hsubj { font-weight: 600; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }

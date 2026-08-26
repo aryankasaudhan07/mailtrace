@@ -129,3 +129,12 @@ button { font-family: inherit; cursor: pointer; }
 .muted { color: var(--text-2); }
 .dim { color: var(--text-3); }
 .mono { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+/* ---- shared data table ---- */
+.dtable { width: 100%; border-collapse: collapse; font-size: .85rem; }
+.dtable th { text-align: left; color: var(--text-3); font-weight: 600; padding: 9px 12px;
+  border-bottom: 1px solid var(--line); font-size: .76rem; white-space: nowrap; }
+.dtable td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.dtable tr:last-child td { border-bottom: none; }
+.dtable tbody tr.click { cursor: pointer; }
+.dtable tbody tr.click:hover td { background: var(--card-2); }

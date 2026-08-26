@@ -37,14 +37,14 @@ export default function History() {
         </div>
 
         {items === null ? <div className="muted center" style={{ padding: 30 }}>Loading…</div> : (
-          <table className="breakdown hist-table">
+          <table className="dtable hist-table">
             <thead><tr><th>Message</th><th>Sender</th><th>Score</th><th>Verdict</th><th>IOCs</th><th>Analyzed</th><th /></tr></thead>
             <tbody>
               {rows.map((r) => {
                 const info = bandInfo(r.band)
                 return (
-                  <tr key={r.case_id} className="hrow" onClick={() => nav(`/result/${r.case_id}`)}>
-                    <td><div className="hcell"><div className="hicon"><Mail size={15} /></div>
+                  <tr key={r.case_id} className="click" onClick={() => nav(`/result/${r.case_id}`)}>
+                    <td><div className="hcell"><div className={'hicon ' + info.key}><Mail size={15} /></div>
                       <span className="hsubj">{r.subject}</span></div></td>
                     <td className="muted">{r.from_addr || '—'}</td>
                     <td><b style={{ color: `var(--${info.key === 'benign' ? 'benign' : info.key})` }}>{r.score}</b></td>

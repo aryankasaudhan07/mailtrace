@@ -2,7 +2,9 @@
 .rep-stat { display: flex; align-items: center; gap: 13px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
 
 .rep-list { display: flex; flex-direction: column; gap: 10px; }
-.rep-row { display: flex; align-items: center; gap: 13px; background: var(--card-2); border: 1px solid var(--line); border-radius: 11px; padding: 13px 15px; }
+.rep-row { display: flex; align-items: center; gap: 13px; background: var(--card-2); border: 1px solid var(--line);
+  border-radius: 11px; padding: 13px 15px; transition: border-color .15s, box-shadow .15s; }
+.rep-row:hover { border-color: var(--line-2); box-shadow: var(--shadow-sm); }
 .rep-ic { width: 42px; height: 42px; border-radius: 10px; display: grid; place-items: center; flex-shrink: 0; }
 .rep-ic.crit { color: var(--crit); background: var(--crit-bg); }
 .rep-ic.high { color: var(--high); background: var(--high-bg); }

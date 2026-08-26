@@ -74,7 +74,7 @@ export default function ThreatIntel() {
         <div className="card">
           <div className="card-title">Shared Infrastructure (IOCs)</div>
           {iocs.length ? (
-            <table className="breakdown">
+            <table className="dtable ti-table">
               <thead><tr><th>Type</th><th>Indicator</th><th>Cases</th></tr></thead>
               <tbody>
                 {iocs.slice(0, 12).map((s) => {
@@ -82,8 +82,8 @@ export default function ThreatIntel() {
                   return (
                     <tr key={s.kind + s.value}>
                       <td><span className="ioc-type"><Icon size={13} /> {KIND_LABEL[s.kind] || s.kind}</span></td>
-                      <td className="mono">{s.value}</td>
-                      <td><span className="badge crit">{s.n}</span></td>
+                      <td className="mono ioc-val">{s.value}</td>
+                      <td><span className="badge violet">{s.n} cases</span></td>
                     </tr>
                   )
                 })}
