@@ -5,13 +5,14 @@ import {
 } from 'recharts'
 import {
   Mail, ShieldAlert, AlertTriangle, ShieldCheck, Anchor, Bug, Inbox,
-  Crosshair, MoreHorizontal, Circle, ArrowUpRight,
+  Crosshair, MoreHorizontal, Circle,
 } from 'lucide-react'
 import PageHead from '../components/PageHead.jsx'
 import { api, bandInfo } from '../api.js'
 import './dashboard.css'
 
 const TYPE_ICON = { Phishing: Anchor, BEC: Anchor, Malware: Bug, Injection: Bug, Spoofing: Crosshair, Spam: Inbox, Anonymized: Crosshair, Campaign: Crosshair, Suspicious: MoreHorizontal, Clean: ShieldCheck }
+const TT_TONES = ['crit', 'high', 'med', 'violet', 'info']
 const timeAgo = (iso) => {
   const s = Math.max(0, (Date.now() - new Date(iso)) / 1000)
   if (s < 60) return 'just now'
@@ -92,10 +93,19 @@ export default function Dashboard() {
           </div>
           <div className="card-title" style={{ marginTop: 24 }}>Top Threat Types</div>
           <div className="ttypes">
-            {s.threat_types.length ? s.threat_types.slice(0, 5).map(([t, n]) => {
+            {s.threat_types.length ? s.threat_types.slice(0, 5).map(([t, n], i) => {
               const Icon = TYPE_ICON[t] || MoreHorizontal
-              return (<div className="ttype" key={t}><Icon size={17} className="ttype-ic" />
-                <div className="ttype-t">{t}</div><div className="ttype-p">{Math.round((n / typeTotal) * 100)}%</div></div>)
+              const share = Math.round((n / typeTotal) * 100)
+              const tone = TT_TONES[i] || 'info'
+              return (
+                <div className="ttype" key={t}>
+                  <div className={'ttype-ic ' + tone}><Icon size={15} /></div>
+                  <div className="ttype-main">
+                    <div className="ttype-head"><span className="ttype-t">{t}</span><span className="ttype-n">{n} · {share}%</span></div>
+                    <div className="ttype-bar"><span className={'ttype-fill ' + tone} style={{ width: `${Math.max(4, share)}%` }} /></div>
+                  </div>
+                </div>
+              )
             }) : <div className="muted">No threats detected yet.</div>}
           </div>
         </div>
@@ -108,8 +118,9 @@ export default function Dashboard() {
               const info = bandInfo(r.band)
               return (
                 <div className="recent-item" key={r.case_id} onClick={() => nav(`/result/${r.case_id}`)}>
-                  <div className="recent-ic"><Mail size={17} /></div>
-                  <div className="recent-body"><div className="recent-s">{r.subject}</div></div>
+                  <div className={'recent-ic ' + info.key}><Mail size={17} /></div>
+                  <div className="recent-body"><div className="recent-s">{r.subject}</div>
+                    <div className="dim recent-sub">Score {r.score} · {info.label}</div></div>
                   <span className={'badge ' + info.key}>{info.label}</span>
                   <span className="dim" style={{ fontSize: '.78rem', minWidth: 62, textAlign: 'right' }}>{timeAgo(r.analyzed_at)}</span>
                 </div>
@@ -139,7 +150,7 @@ export default function Dashboard() {
           <div className="card-title">System Status</div>
           <div className="sysrows">
             {[['Email Analyzer', true], ['Threat Intelligence DB', true], ['Geolocation Service', true],
-              ['Report Generator', true], ['AI Detection Engine (M4)', true]].map(([name, up]) => (
+              ['Report Generator', true], ['AI Detection Engine (M4)', true]].map(([name]) => (
               <div className="sysrow" key={name}><span>{name}</span>
                 <span className="sysup"><Circle size={7} fill="var(--low)" color="var(--low)" /> Online</span></div>
             ))}
