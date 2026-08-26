@@ -131,16 +131,8 @@ async def register_request(c: Creds) -> dict:
     otp = f"{secrets.randbelow(1_000_000):06d}"
     name = c.name or email.split("@")[0].title()
     _PENDING[email] = (otp, time.time() + _REG_TTL, name, c.password)
-    sent = await asyncio.to_thread(_send_otp_email, email, otp, "verify your new account")
-    resp = {"sent": sent}
-    if not sent:
-        # Demo fallback: no SMTP configured, so surface the code so signup is
-        # usable. With SMTP set (Gmail app password) the code is emailed instead.
-        resp["demo_otp"] = otp
-        resp["message"] = "Email not configured — showing the code for the demo."
-    else:
-        resp["message"] = "A verification code has been emailed to you."
-    return resp
+    sent, detail = await asyncio.to_thread(_send_otp_email, email, otp, "verify your new account")
+    return _otp_response(otp, sent, detail)
 
 
 @router.post("/register/verify", status_code=201)
@@ -182,15 +174,17 @@ class ResetVerify(BaseModel):
     password: str
 
 
-def _send_otp_email(to: str, otp: str, purpose: str = "reset your password") -> bool:
-    """Send the OTP via SMTP. Returns False if SMTP isn't configured or fails.
+def _send_otp_email(to: str, otp: str, purpose: str = "reset your password") -> tuple[bool, str]:
+    """Send the OTP via SMTP.
 
-    `purpose` phrases the subject/body -- e.g. "reset your password" or
-    "verify your new account" -- so the same sender serves both flows.
+    Returns (sent, detail). detail is "" on success, "not_configured" when no
+    SMTP credentials are set, or a short error string (type + message, never the
+    credentials) when the send itself fails -- so a caller can explain WHY.
+    `purpose` phrases the subject/body for the reset vs signup flows.
     """
     cfg = settings()
     if not (cfg.smtp_user and cfg.smtp_password):
-        return False
+        return False, "not_configured"
     msg = EmailMessage()
     msg["Subject"] = f"Your Mailtrace code to {purpose}"
     msg["From"] = cfg.smtp_from or cfg.smtp_user
@@ -205,9 +199,25 @@ def _send_otp_email(to: str, otp: str, purpose: str = "reset your password") -> 
             s.starttls()
             s.login(cfg.smtp_user, cfg.smtp_password)
             s.send_message(msg)
-        return True
-    except Exception:
-        return False
+        return True, ""
+    except Exception as exc:  # noqa: BLE001 -- report the reason, never crash the request
+        return False, f"{type(exc).__name__}: {exc}"[:240]
+
+
+def _otp_response(otp: str, sent: bool, detail: str) -> dict:
+    """Shared response for the two /request endpoints: email it, or fall back to
+    the demo code and say why the email didn't go out."""
+    resp: dict = {"sent": sent}
+    if sent:
+        resp["message"] = "A verification code has been emailed to you."
+        return resp
+    resp["demo_otp"] = otp  # demo fallback so the flow stays usable
+    if detail == "not_configured":
+        resp["message"] = "Email not configured — showing the code for the demo."
+    else:
+        resp["message"] = "Email send failed — showing the code for the demo."
+        resp["smtp_error"] = detail
+    return resp
 
 
 @router.post("/reset/request")
@@ -219,16 +229,8 @@ async def reset_request(c: EmailOnly) -> dict:
         raise HTTPException(404, "No account found with that email")
     otp = f"{secrets.randbelow(1_000_000):06d}"
     _OTP[email] = (otp, time.time() + _OTP_TTL)
-    sent = await asyncio.to_thread(_send_otp_email, email, otp)
-    resp = {"sent": sent}
-    if not sent:
-        # Demo fallback: no SMTP configured, so surface the code so the flow is
-        # usable. With SMTP set (Gmail app password) the code is emailed instead.
-        resp["demo_otp"] = otp
-        resp["message"] = "Email not configured — showing the code for the demo."
-    else:
-        resp["message"] = "A reset code has been emailed to you."
-    return resp
+    sent, detail = await asyncio.to_thread(_send_otp_email, email, otp)
+    return _otp_response(otp, sent, detail)
 
 
 @router.post("/reset/verify")
