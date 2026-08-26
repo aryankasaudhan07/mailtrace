@@ -26,13 +26,20 @@ class Settings(BaseSettings):
     trusted_mx_cidrs: str = ""
     trusted_providers: str = ""
 
-    # SMTP for password-reset OTP emails. Gmail: set smtp_user to your address and
-    # smtp_password to a Google App Password (needs 2FA). Unset -> demo fallback.
+    # OTP email delivery. Two transports, tried in this order:
+    #  1) Brevo HTTP API (port 443) -- works on hosts that block outbound SMTP,
+    #     e.g. Render's free tier. Set brevo_api_key + mail_from (a Brevo-verified
+    #     sender). This is the recommended path for the cloud deploy.
+    #  2) SMTP -- for hosts that allow it. Gmail: smtp_user = your address,
+    #     smtp_password = a Google App Password (needs 2FA).
+    # With neither set, the flow falls back to showing the code in-UI (demo mode).
+    brevo_api_key: str = ""
+    mail_from: str = ""            # verified sender address (Brevo or SMTP "From")
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 587
     smtp_user: str = ""
     smtp_password: str = ""
-    smtp_from: str = ""
+    smtp_from: str = ""            # legacy alias for mail_from
 
     intel_dir: str = "./intel"
     maxmind_account_id: str = ""

@@ -174,26 +174,61 @@ class ResetVerify(BaseModel):
     password: str
 
 
-def _send_otp_email(to: str, otp: str, purpose: str = "reset your password") -> tuple[bool, str]:
-    """Send the OTP via SMTP.
+def _send_via_brevo(to: str, subject: str, body: str, sender: str, api_key: str) -> tuple[bool, str]:
+    """Send over Brevo's transactional HTTP API (HTTPS:443). Works where the host
+    blocks outbound SMTP ports (Render free tier). Returns (sent, detail)."""
+    import requests
 
-    Returns (sent, detail). detail is "" on success, "not_configured" when no
-    SMTP credentials are set, or a short error string (type + message, never the
-    credentials) when the send itself fails -- so a caller can explain WHY.
+    try:
+        r = requests.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={"api-key": api_key, "accept": "application/json", "content-type": "application/json"},
+            json={
+                "sender": {"email": sender, "name": "Mailtrace"},
+                "to": [{"email": to}],
+                "subject": subject,
+                "textContent": body,
+            },
+            timeout=10,
+        )
+    except Exception as exc:  # noqa: BLE001 -- report the reason, never crash the request
+        return False, f"{type(exc).__name__}: {exc}"[:240]
+    if r.status_code in (200, 201):
+        return True, ""
+    return False, f"brevo {r.status_code}: {r.text[:180]}"
+
+
+def _send_otp_email(to: str, otp: str, purpose: str = "reset your password") -> tuple[bool, str]:
+    """Send the OTP by whatever transport is configured.
+
+    Order: Brevo HTTP API (if brevo_api_key set) -> SMTP (if smtp creds set) ->
+    "not_configured". Returns (sent, detail); detail is "" on success or a short
+    error string (never the credentials) so a caller can explain WHY it failed.
     `purpose` phrases the subject/body for the reset vs signup flows.
     """
     cfg = settings()
-    if not (cfg.smtp_user and cfg.smtp_password):
-        return False, "not_configured"
-    msg = EmailMessage()
-    msg["Subject"] = f"Your Mailtrace code to {purpose}"
-    msg["From"] = cfg.smtp_from or cfg.smtp_user
-    msg["To"] = to
-    msg.set_content(
+    subject = f"Your Mailtrace code to {purpose}"
+    body = (
         f"Your Mailtrace verification code is: {otp}\n\n"
         f"Use it to {purpose}. It expires in 10 minutes. "
         "If you didn't request this, you can ignore this email."
     )
+    sender = cfg.mail_from or cfg.smtp_from or cfg.smtp_user
+
+    # 1) HTTP API -- the cloud-friendly path (no outbound SMTP ports needed).
+    if cfg.brevo_api_key:
+        if not sender:
+            return False, "brevo_needs_sender (set MAIL_FROM to a Brevo-verified sender)"
+        return _send_via_brevo(to, subject, body, sender, cfg.brevo_api_key)
+
+    # 2) SMTP fallback -- for hosts that permit outbound SMTP.
+    if not (cfg.smtp_user and cfg.smtp_password):
+        return False, "not_configured"
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = sender or cfg.smtp_user
+    msg["To"] = to
+    msg.set_content(body)
     try:
         with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=10) as s:
             s.starttls()

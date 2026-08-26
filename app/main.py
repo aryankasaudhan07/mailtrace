@@ -76,9 +76,9 @@ async def health() -> dict:
         "scorer_version": rules.version,
         "signals_defined": len(rules.signals),
         "analyzers_registered": sorted(a.value for a in registry()),
-        # Boolean only -- never the credentials. Lets us confirm OTP email is
-        # wired without exposing any secret.
-        "smtp_configured": bool(cfg.smtp_user and cfg.smtp_password),
+        # Booleans only -- never the credentials. Confirms OTP email is wired.
+        "email_configured": bool(cfg.brevo_api_key or (cfg.smtp_user and cfg.smtp_password)),
+        "email_transport": "brevo" if cfg.brevo_api_key else ("smtp" if cfg.smtp_user and cfg.smtp_password else "none"),
     }
 
 

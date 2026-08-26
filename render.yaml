@@ -18,8 +18,14 @@ services:
         sync: false
       - key: ABUSEIPDB_KEY
         sync: false
-      # Password-reset OTP email (Gmail). Set SMTP_PASSWORD to a Google App
-      # Password (requires 2FA). Leave unset to keep the demo fallback.
+      # OTP email. RECOMMENDED on Render: Brevo HTTP API (Render free tier blocks
+      # outbound SMTP ports, so SMTP cannot work here). Set BREVO_API_KEY + a
+      # Brevo-verified sender in MAIL_FROM. Leave unset to keep the demo fallback.
+      - key: BREVO_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false
+      # SMTP is a fallback for hosts that allow outbound SMTP (not Render free).
       - key: SMTP_USER
         sync: false
       - key: SMTP_PASSWORD
