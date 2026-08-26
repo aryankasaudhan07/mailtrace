@@ -18,8 +18,9 @@ export function AuthProvider({ children }) {
     const r = await api.login(email, password)
     setToken(r.token); setUser(r.user); return r.user
   }
-  const register = async (email, password, name) => {
-    const r = await api.register(email, password, name)
+  const registerRequest = (email, password, name) => api.registerRequest(email, password, name)
+  const registerVerify = async (email, otp) => {
+    const r = await api.registerVerify(email, otp)
     setToken(r.token); setUser(r.user); return r.user
   }
   const resetRequest = (email) => api.resetRequest(email)
@@ -29,7 +30,7 @@ export function AuthProvider({ children }) {
   }
   const logout = () => { setToken(null); setUser(null) }
 
-  return <AuthCtx.Provider value={{ user, ready, login, register, resetRequest, resetVerify, logout }}>{children}</AuthCtx.Provider>
+  return <AuthCtx.Provider value={{ user, ready, login, registerRequest, registerVerify, resetRequest, resetVerify, logout }}>{children}</AuthCtx.Provider>
 }
 
 export function RequireAuth({ children }) {

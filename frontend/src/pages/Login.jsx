@@ -15,9 +15,9 @@ const FEATURES = [
 
 export default function Login() {
   const nav = useNavigate()
-  const { login, register, resetRequest, resetVerify } = useAuth()
+  const { login, registerRequest, registerVerify, resetRequest, resetVerify } = useAuth()
   const [mode, setMode] = useState('login')          // login | register | reset
-  const [step, setStep] = useState('request')        // reset sub-step: request | verify
+  const [step, setStep] = useState('request')        // register/reset sub-step: request | verify
   const [show, setShow] = useState(false)
   const [busy, setBusy] = useState(false)
   const [err, setErr] = useState(null)
@@ -27,35 +27,51 @@ export default function Login() {
   const go = (m) => { setMode(m); setStep('request'); setErr(null); setInfo(null) }
 
   const title = mode === 'login' ? 'Welcome Back'
-    : mode === 'register' ? 'Create Account'
+    : mode === 'register' ? (step === 'request' ? 'Create Account' : 'Verify your email')
     : step === 'request' ? 'Reset Password' : 'Enter reset code'
   const sub = mode === 'login' ? 'Sign in to your Email Threat Intelligence Platform'
-    : mode === 'register' ? 'Set up your analyst account to get started'
+    : mode === 'register' ? (step === 'request'
+        ? 'Set up your analyst account to get started'
+        : `Enter the 6-digit code sent to ${form.email}`)
     : step === 'request' ? 'Enter your email and we’ll send a reset code'
     : `Enter the 6-digit code sent to ${form.email}`
   const cta = mode === 'login' ? 'Sign In'
-    : mode === 'register' ? 'Create Account'
+    : mode === 'register' ? (step === 'request' ? 'Send verification code' : 'Verify & create account')
     : step === 'request' ? 'Send reset code' : 'Reset password'
+
+  const codeInfo = (r) => {
+    setInfo(r.demo_otp
+      ? `Demo mode (email not configured): your code is ${r.demo_otp}`
+      : 'A 6-digit code has been emailed to you.')
+    if (r.demo_otp) setForm((f) => ({ ...f, otp: r.demo_otp }))
+    setStep('verify'); setBusy(false)
+  }
 
   const submit = async (e) => {
     e.preventDefault(); setBusy(true); setErr(null)
     try {
       if (mode === 'login') { await login(form.email, form.password); nav('/') }
-      else if (mode === 'register') { await register(form.email, form.password, form.name); nav('/') }
-      else if (mode === 'reset' && step === 'request') {
-        const r = await resetRequest(form.email)
-        setInfo(r.demo_otp
-          ? `Demo mode (email not configured): your code is ${r.demo_otp}`
-          : 'A 6-digit reset code has been emailed to you.')
-        if (r.demo_otp) setForm((f) => ({ ...f, otp: r.demo_otp }))
-        setStep('verify'); setBusy(false)
+      else if (mode === 'register' && step === 'request') {
+        codeInfo(await registerRequest(form.email, form.password, form.name))
+      } else if (mode === 'register') {
+        await registerVerify(form.email, form.otp); nav('/')
+      } else if (mode === 'reset' && step === 'request') {
+        codeInfo(await resetRequest(form.email))
       } else {
         await resetVerify(form.email, form.otp, form.password); nav('/')
       }
     } catch (x) { setErr(String(x.message || x)); setBusy(false) }
   }
 
-  const showEmail = !(mode === 'reset' && step === 'verify')
+  const onVerify = step === 'verify'
+  const showEmail = !onVerify
+  const showName = mode === 'register' && step === 'request'
+  const showOtp = onVerify
+  // New password is set up-front on register (request step) and on the reset
+  // verify step; login always shows the current password.
+  const showPassword = mode === 'login'
+    || (mode === 'register' && step === 'request')
+    || (mode === 'reset' && onVerify)
   return (
     <div className="login">
       <header className="login-top">
@@ -90,7 +106,7 @@ export default function Login() {
             {err && <div className="auth-err">{err}</div>}
             {info && <div className="auth-info">{info}</div>}
 
-            {mode === 'register' && (
+            {showName && (
               <label className="field"><User size={17} />
                 <input placeholder="Full name" value={form.name} onChange={set('name')} autoComplete="name" /></label>
             )}
@@ -99,14 +115,15 @@ export default function Login() {
                 <input type="email" placeholder="Email address" value={form.email} onChange={set('email')}
                   autoComplete="email" required /></label>
             )}
-            {mode === 'reset' && step === 'verify' && (
+            {showOtp && (
               <label className="field"><KeyRound size={17} />
                 <input inputMode="numeric" maxLength={6} placeholder="6-digit code" value={form.otp}
                   onChange={set('otp')} required /></label>
             )}
-            {(mode !== 'reset' || step === 'verify') && (
+            {showPassword && (
               <label className="field"><Lock size={17} />
-                <input type={show ? 'text' : 'password'} placeholder={mode === 'reset' ? 'New password' : 'Password'}
+                <input type={show ? 'text' : 'password'}
+                  placeholder={mode === 'login' ? 'Password' : mode === 'register' ? 'Create a password' : 'New password'}
                   value={form.password} onChange={set('password')}
                   autoComplete={mode === 'login' ? 'current-password' : 'new-password'} required />
                 <button type="button" className="eye" onClick={() => setShow((s) => !s)}>{show ? <EyeOff size={17} /> : <Eye size={17} />}</button>
@@ -133,6 +150,7 @@ export default function Login() {
             )}
             {mode === 'register' && (
               <p className="dim" style={{ textAlign: 'center' }}>
+                {step === 'verify' && <><a className="violet-link" onClick={() => { setStep('request'); setErr(null); setInfo(null) }}>Change details / resend</a> · </>}
                 Already have an account? <a className="violet-link" onClick={() => go('login')}>Sign In</a>
               </p>
             )}

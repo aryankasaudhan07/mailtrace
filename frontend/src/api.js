@@ -20,7 +20,8 @@ async function j(url, opts = {}) {
 export const api = {
   // auth
   login: (email, password) => j('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) }),
-  register: (email, password, name) => j('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name }) }),
+  registerRequest: (email, password, name) => j('/api/auth/register/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, name }) }),
+  registerVerify: (email, otp) => j('/api/auth/register/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, otp }) }),
   resetRequest: (email) => j('/api/auth/reset/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }),
   resetVerify: (email, otp, password) => j('/api/auth/reset/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, otp, password }) }),
   me: () => j('/api/auth/me'),

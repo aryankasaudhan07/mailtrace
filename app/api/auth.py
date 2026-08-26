@@ -106,20 +106,64 @@ async def login(c: Creds) -> dict:
     return {"token": _sign(store, email), "user": _user_public(store, email)}
 
 
-@router.post("/register", status_code=201)
-async def register(c: Creds) -> dict:
+# --- Account creation via emailed one-time code (OTP) ------------------------
+# Registration is two-step: /register/request emails a code and holds the
+# pending signup in memory; /register/verify checks the code, then creates the
+# account. The account does not exist until the email is proven.
+_PENDING: dict[str, tuple[str, float, str, str]] = {}  # email -> (otp, expiry, name, password)
+_REG_TTL = 600  # 10 minutes
+
+
+class RegisterVerify(BaseModel):
+    email: str
+    otp: str
+
+
+@router.post("/register/request", status_code=202)
+async def register_request(c: Creds) -> dict:
+    """Step 1: validate the details and email a verification code."""
     store = _load()
     email = c.email.lower().strip()
     if "@" not in email or len(c.password) < 6:
         raise HTTPException(400, "Valid email and a 6+ char password required")
     if email in store["users"]:
         raise HTTPException(409, "An account with that email already exists")
+    otp = f"{secrets.randbelow(1_000_000):06d}"
+    name = c.name or email.split("@")[0].title()
+    _PENDING[email] = (otp, time.time() + _REG_TTL, name, c.password)
+    sent = await asyncio.to_thread(_send_otp_email, email, otp, "verify your new account")
+    resp = {"sent": sent}
+    if not sent:
+        # Demo fallback: no SMTP configured, so surface the code so signup is
+        # usable. With SMTP set (Gmail app password) the code is emailed instead.
+        resp["demo_otp"] = otp
+        resp["message"] = "Email not configured — showing the code for the demo."
+    else:
+        resp["message"] = "A verification code has been emailed to you."
+    return resp
+
+
+@router.post("/register/verify", status_code=201)
+async def register_verify(c: RegisterVerify) -> dict:
+    """Step 2: verify the code, create the account, and sign in."""
+    store = _load()
+    email = c.email.lower().strip()
+    rec = _PENDING.get(email)
+    if not rec or rec[1] < time.time():
+        raise HTTPException(400, "Code expired or not requested — start again")
+    if not hmac.compare_digest(rec[0], c.otp.strip()):
+        raise HTTPException(400, "Incorrect code")
+    if email in store["users"]:  # raced another signup
+        _PENDING.pop(email, None)
+        raise HTTPException(409, "An account with that email already exists")
+    _, _, name, password = rec
     salt = secrets.token_hex(16)
     store["users"][email] = {
-        "name": c.name or email.split("@")[0].title(), "role": "Analyst",
-        "salt": salt, "hash": _hash(c.password, salt),
+        "name": name, "role": "Analyst",
+        "salt": salt, "hash": _hash(password, salt),
     }
     _save(store)
+    _PENDING.pop(email, None)
     return {"token": _sign(store, email), "user": _user_public(store, email)}
 
 
@@ -138,18 +182,23 @@ class ResetVerify(BaseModel):
     password: str
 
 
-def _send_otp_email(to: str, otp: str) -> bool:
-    """Send the OTP via SMTP. Returns False if SMTP isn't configured or fails."""
+def _send_otp_email(to: str, otp: str, purpose: str = "reset your password") -> bool:
+    """Send the OTP via SMTP. Returns False if SMTP isn't configured or fails.
+
+    `purpose` phrases the subject/body -- e.g. "reset your password" or
+    "verify your new account" -- so the same sender serves both flows.
+    """
     cfg = settings()
     if not (cfg.smtp_user and cfg.smtp_password):
         return False
     msg = EmailMessage()
-    msg["Subject"] = "Your Mailtrace password reset code"
+    msg["Subject"] = f"Your Mailtrace code to {purpose}"
     msg["From"] = cfg.smtp_from or cfg.smtp_user
     msg["To"] = to
     msg.set_content(
-        f"Your Mailtrace password reset code is: {otp}\n\n"
-        "It expires in 10 minutes. If you didn't request this, ignore this email."
+        f"Your Mailtrace verification code is: {otp}\n\n"
+        f"Use it to {purpose}. It expires in 10 minutes. "
+        "If you didn't request this, you can ignore this email."
     )
     try:
         with smtplib.SMTP(cfg.smtp_host, cfg.smtp_port, timeout=10) as s:
