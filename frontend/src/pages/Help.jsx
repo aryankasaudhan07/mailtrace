@@ -5,7 +5,7 @@ import PageHead from '../components/PageHead.jsx'
 import './help.css'
 
 const FAQ = [
-  ['How is the threat score calculated?', 'Seven analyzers each emit evidence (header forensics, SPF/DKIM/DMARC, NLP content, network, domain, and campaign correlation). A single explainable weight table combines them into a 0–100 score and a band. Every point is traceable in the AI Analysis Breakdown.'],
+  ['How is the threat score calculated?', 'Six analyzers each emit evidence (header forensics, SPF/DKIM/DMARC, NLP content, network, domain, and campaign correlation). A single explainable weight table combines them into a 0–100 score and a band. Every point is traceable in the AI Analysis Breakdown.'],
   ['Why did a legitimate-looking email score high?', 'The most damaging attacks authenticate correctly. The scorer never lets good authentication cancel evidence of deception — a valid signature reduces risk only on an otherwise clean message.'],
   ['What do the verdict bands mean?', 'BENIGN (0–24), SUSPICIOUS (25–49), HIGH_RISK (50–74), CRITICAL (75–100). Confidence is separate and reflects how many analyzers ran.'],
   ['Is my email data stored?', 'In this demo, analyzed messages live in memory for the session. Evidence and audit logs are append-only by design; nothing is sent to third parties.'],

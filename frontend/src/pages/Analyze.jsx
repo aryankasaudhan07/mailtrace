@@ -63,7 +63,7 @@ export default function Analyze() {
             <input ref={inputRef} type="file" accept=".eml,.msg,message/rfc822" hidden
               onChange={(e) => setFile(e.target.files?.[0] || null)} />
             {busy ? (
-              <><Loader2 className="spin" size={40} /><div className="dz-t">Running 7 analyzers…</div>
+              <><Loader2 className="spin" size={40} /><div className="dz-t">Running 6 analyzers…</div>
                 <div className="muted">Parsing headers, verifying SPF/DKIM/DMARC, scoring content</div></>
             ) : file ? (
               <><FileText size={40} color="var(--violet)" /><div className="dz-t">{file.name}</div>

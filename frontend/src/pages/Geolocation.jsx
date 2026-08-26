@@ -9,14 +9,13 @@ const FLAG = (cc) => cc ? String.fromCodePoint(...[...cc.toUpperCase()].map((c) 
 
 export default function Geolocation() {
   const [ip, setIp] = useState('171.25.193.25')
-  const [q, setQ] = useState('171.25.193.25')
   const [data, setData] = useState(null)
   const [err, setErr] = useState(null)
   const [busy, setBusy] = useState(false)
 
   function lookup(target) {
     setBusy(true); setErr(null)
-    api.geo(target).then((d) => { setData(d); setQ(target) })
+    api.geo(target).then((d) => setData(d))
       .catch((e) => setErr(String(e.message || e))).finally(() => setBusy(false))
   }
   useEffect(() => { lookup('171.25.193.25') }, [])
