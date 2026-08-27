@@ -3,7 +3,27 @@ import { generateKeyPairSync } from 'node:crypto';
 import { dkimSign } from 'mailauth/lib/dkim/sign';
 import { parseEmail } from '../ingest/parser';
 import { Status } from '../schemas/evidence';
-import { aligned, dkimSigningDomains, verifyDkim, dmarcPolicy, verifyDmarc } from './m3_auth';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { aligned, dkimSigningDomains, verifyDkim, dmarcPolicy, verifyDmarc, dkimResolver } from './m3_auth';
+
+describe('M3 demo DKIM samples (bundled public key, no DNS)', () => {
+  const sample = (n: string) => readFileSync(join(process.cwd(), 'public/samples', n));
+
+  it('dkim-pass.eml verifies -> dkim_valid_aligned', async () => {
+    const email = await parseEmail(sample('dkim-pass.eml'));
+    const { ev, pass } = await verifyDkim('c', email, dkimResolver);
+    expect(pass).toBe(true);
+    expect(ev?.signal).toBe('dkim_valid_aligned');
+  });
+
+  it('dkim-fail.eml (tampered body) -> dkim_fail', async () => {
+    const email = await parseEmail(sample('dkim-fail.eml'));
+    const { ev, pass } = await verifyDkim('c', email, dkimResolver);
+    expect(pass).toBe(false);
+    expect(ev?.signal).toBe('dkim_fail');
+  });
+});
 
 describe('M3 alignment + signing-domain parsing', () => {
   it('relaxed alignment', () => {

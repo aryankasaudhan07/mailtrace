@@ -1,0 +1,19 @@
+DKIM-Signature: v=1; a=rsa-sha256; c=relaxed/relaxed;
+ d=trusted-corp.example; h=Content-Type: MIME-Version: Message-ID: Date:
+ Subject: To: From; q=dns/txt; s=demo; t=1787824805;
+ bh=OQ2EdjA9o2ADezfjTCJbPzsMXnSHkuCG4ngrpYJkNS0=;
+ b=xhfUNeyLwQ5XTqwt74kl2QiFSVMvdbwzslJz/uI9p1YUI1FRqbdY9ipS32D6tWVgTXzt/OGGY
+ 5gWx6HAFCVXwzvAEWY/RHxvR/dWIzqXoIVaEtcdcD6tfuRvtVTApS6/yDru+9i7aWsaJpANIy0n
+ vThopf3hiXh0rDbKzyeZRo8r5H22+r49kKEAQlhOswb0dLR3YpUDXTOW2mLmdTryaVoWc/RFF0B
+ MhqF/D02Ni3sYPohYpqJRQn7WNIUk4F3GfsIolMcrmSHJcPaIx6xVDCJXqd4tYQK3ZUPu1xv+fC
+ PSE1ZSBWvqTHdkuqdx5waEHhXDGhGMPS/A0/DT9C0vwQ==
+From: "Finance Team" <finance@trusted-corp.example>
+To: ap@acme.example
+Subject: Payment confirmation for invoice 8841
+Date: Wed, 27 Aug 2026 10:00:00 +0000
+Message-ID: <pass-8841@trusted-corp.example>
+Received: from mail.trusted-corp.example ([203.0.113.10]) by mx.example.ac.in with ESMTPS; Wed, 27 Aug 2026 10:00:02 +0000
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+
+Hello, your payment for invoice 8841 has been processed successfully. URGENT: wire 50,000 USD to account 99887766 today to avoid penalties.

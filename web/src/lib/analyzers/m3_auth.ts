@@ -18,6 +18,21 @@ import { Analyzer, clear, triggered, type Evidence } from '../schemas/evidence';
 import { headerValues, type ParsedEmail } from '../schemas/email';
 import { register } from './base';
 import { authenticatedOrigin } from './m2_headers';
+import { DKIM_DEMO_KEYS } from './dkim_demo_keys';
+
+// Resolver for DKIM key lookups: serve bundled demo keys locally (so the
+// self-contained signed samples verify without DNS), else use real DNS.
+export async function dkimResolver(name: string, rr: string): Promise<string[][]> {
+  if (rr === 'TXT' && DKIM_DEMO_KEYS[name]) return [[DKIM_DEMO_KEYS[name]]];
+  if (rr === 'TXT') {
+    try {
+      return await resolveTxt(name);
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
 
 const DMARC_P_RE = /[;\s]p\s*=\s*(\w+)/i;
 const DKIM_D_RE = /[;\s]d\s*=\s*([^;]+)/i;
@@ -189,7 +204,7 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
     /* SPF is best-effort; ignore */
   }
 
-  const dkimR = await verifyDkim(caseId, email);
+  const dkimR = await verifyDkim(caseId, email, dkimResolver);
   if (dkimR.ev) ev.push(dkimR.ev);
   dkimPass = dkimR.pass;
 
