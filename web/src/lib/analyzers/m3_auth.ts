@@ -72,12 +72,17 @@ export async function verifyDkim(
   if (!sigDomains.length) return { ev: null, pass: false }; // unsigned: not scored
 
   let ok = false;
+  let diag = '';
   try {
     const res = await dkimVerify(email.rawBytes, resolver ? { resolver } : {});
-    const results = (res?.results ?? []) as Array<{ status?: { result?: string } }>;
+    const results = (res?.results ?? []) as Array<{ status?: { result?: string; comment?: string }; signingDomain?: string }>;
     ok = results.some((r) => r.status?.result === 'pass');
-  } catch {
+    const first = results[0];
+    if (first) diag = `${first.status?.result ?? '?'}: ${first.status?.comment ?? ''} (d=${first.signingDomain ?? '?'}, results=${results.length})`;
+    else diag = 'no dkim results';
+  } catch (e) {
     ok = false;
+    diag = `exception: ${(e as Error).message ?? e}`;
   }
 
   const d = sigDomains[0];
@@ -97,6 +102,7 @@ export async function verifyDkim(
     return {
       ev: triggered(caseId, Analyzer.M3_AUTH, 'dkim_fail', {
         domain: d,
+        diagnostic: diag, // temporary: mailauth's reason, to debug the Vercel-only failure
         explanation: `DKIM signature (d=${d}) failed cryptographic verification — content was altered or the signature was forged.`,
       }),
       pass: false,
