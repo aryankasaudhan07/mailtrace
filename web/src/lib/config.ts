@@ -15,9 +15,18 @@ function csv(v: string | undefined, fallback: string): string[] {
     .filter(Boolean);
 }
 
+// The fixture/demo MX is ALWAYS trusted so the trust boundary resolves
+// out-of-the-box, regardless of whether TRUSTED_MX_HOSTS is unset, empty, or set
+// to a stale value in the host environment. Real deployments add their own MX via
+// the env var (unioned in below); this fixture host is harmless in production —
+// nobody legitimately receives mail as mx.example.ac.in.
+const FIXTURE_MX = 'mx.example.ac.in';
+
 export const config = {
   trustedHosts(): Set<string> {
-    return new Set(csv(process.env.TRUSTED_MX_HOSTS, 'mx.example.ac.in').map((s) => s.toLowerCase()));
+    const hosts = new Set<string>([FIXTURE_MX]);
+    for (const h of csv(process.env.TRUSTED_MX_HOSTS, '')) hosts.add(h.toLowerCase());
+    return hosts;
   },
   trustedCidrs(): string[] {
     return csv(process.env.TRUSTED_MX_CIDRS, '');

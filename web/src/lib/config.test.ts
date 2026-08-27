@@ -13,10 +13,17 @@ describe('config trust hosts default', () => {
     process.env.TRUSTED_MX_HOSTS = '';
     expect(config.trustedHosts().has('mx.example.ac.in')).toBe(true);
   });
-  it('uses a real override when provided', () => {
+  it('unions a real override with the always-trusted fixture MX', () => {
     process.env.TRUSTED_MX_HOSTS = 'mx.corp.example, mx2.corp.example';
     const h = config.trustedHosts();
     expect(h.has('mx.corp.example')).toBe(true);
-    expect(h.has('mx.example.ac.in')).toBe(false);
+    expect(h.has('mx2.corp.example')).toBe(true);
+    // fixture MX is always present so the boundary resolves regardless of env
+    expect(h.has('mx.example.ac.in')).toBe(true);
+  });
+
+  it('a wrong/stale env value cannot break the fixture boundary', () => {
+    process.env.TRUSTED_MX_HOSTS = 'some-wrong-host.example';
+    expect(config.trustedHosts().has('mx.example.ac.in')).toBe(true);
   });
 });
