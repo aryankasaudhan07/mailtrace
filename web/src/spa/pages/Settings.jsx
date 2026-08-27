@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { User, SlidersHorizontal, Server, Bell, Shield, Check } from 'lucide-react'
+import { User, SlidersHorizontal, Server, Shield, Check } from 'lucide-react'
 import PageHead from '../components/PageHead.jsx'
 import { useAuth } from '../auth.jsx'
 import { api } from '../api.js'
 import './settings.css'
+
+const DEFAULT_PREFS = { realtime: true, aiContent: true, autoQuarantine: false }
 
 function Toggle({ on, onClick }) {
   return <button className={'toggle-sw' + (on ? ' on' : '')} onClick={onClick}><span /></button>
@@ -12,8 +14,14 @@ function Toggle({ on, onClick }) {
 export default function Settings() {
   const { user, updateProfile } = useAuth() || {}
   const [health, setHealth] = useState(null)
-  const [prefs, setPrefs] = useState({ realtime: true, autoQuarantine: false, emailAlerts: true, weeklyDigest: true, aiContent: true })
-  const set = (k) => () => setPrefs((p) => ({ ...p, [k]: !p[k] }))
+  const [prefs, setPrefs] = useState(() => {
+    try { return { ...DEFAULT_PREFS, ...JSON.parse(localStorage.getItem('mt_prefs') || '{}') } } catch { return { ...DEFAULT_PREFS } }
+  })
+  const set = (k) => () => setPrefs((p) => {
+    const next = { ...p, [k]: !p[k] }
+    try { localStorage.setItem('mt_prefs', JSON.stringify(next)) } catch { /* storage unavailable */ }
+    return next
+  })
 
   // profile edit
   const [editing, setEditing] = useState(false)
@@ -87,14 +95,7 @@ export default function Settings() {
               <Toggle on={prefs[k]} onClick={set(k)} />
             </div>
           ))}
-          <div className="card-title" style={{ marginTop: 22 }}><Bell size={16} style={{ verticalAlign: -3, marginRight: 7 }} />Notifications</div>
-          {[['emailAlerts', 'Email alerts', 'Notify on HIGH/CRITICAL verdicts'], ['weeklyDigest', 'Weekly digest', 'Summary of threats each week']].map(([k, t, d]) => (
-            <div className="pref" key={k}>
-              <div><div className="pref-t">{t}</div><div className="muted" style={{ fontSize: '.8rem' }}>{d}</div></div>
-              <Toggle on={prefs[k]} onClick={set(k)} />
-            </div>
-          ))}
-          <div className="set-saved"><Check size={14} /> Preferences saved automatically (demo)</div>
+          <div className="set-saved"><Check size={14} /> Preferences saved automatically</div>
         </div>
 
         <div className="card">
