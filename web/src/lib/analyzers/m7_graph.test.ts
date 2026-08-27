@@ -20,7 +20,7 @@ describe('M7 correlation', () => {
   it('correlates on the authenticated origin IP, not the sender domain', async () => {
     const email = await parseEmail(fixture('bec.eml'));
     const ind = extractIndicators(email);
-    expect(ind.ip).toContain('203.0.113.44'); // boundary origin, not the claimed 10.0.0.5
+    expect(ind.ip).toContain('139.59.1.1'); // boundary origin, not the claimed 10.0.0.5
     expect(ind.ip).not.toContain('10.0.0.5');
   });
 

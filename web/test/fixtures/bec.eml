@@ -1,5 +1,5 @@
 Received: by mx.example.ac.in with LMTP id 9fA2bQ; Wed, 19 Aug 2026 04:12:34 +0000
-Received: from relay.provider.example ([203.0.113.44]) by mx.example.ac.in with ESMTPS id 7kD1x; Wed, 19 Aug 2026 04:12:33 +0000
+Received: from relay.provider.example ([139.59.1.1]) by mx.example.ac.in with ESMTPS id 7kD1x; Wed, 19 Aug 2026 04:12:33 +0000
 Received: from smtp.mail-verify-portal.example (unknown [198.51.100.77]) by relay.provider.example with ESMTP id 4mZ9c; Wed, 19 Aug 2026 04:12:31 +0000
 Received: from [10.0.0.5] by smtp.mail-verify-portal.example with SMTP id 1aQ7v; Wed, 19 Aug 2026 04:12:29 +0000
 Message-ID: <20260819T041233.9f2a@mail-verify-portal.example>

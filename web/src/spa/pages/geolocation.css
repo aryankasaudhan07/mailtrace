@@ -1,9 +1,32 @@
-.geo-bar { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
-.geo-input-group { display: flex; align-items: center; gap: 20px; }
-.geo-field { display: flex; flex-direction: column; gap: 3px; }
-.geo-ip { background: none; border: none; outline: none; color: var(--text); font-size: 1.3rem; font-weight: 700;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace; width: 200px; }
-.geo-risk { display: flex; align-items: center; gap: 10px; font-size: 1.15rem; }
+/* selected-message bar (drives the map from the analyzed mail's origin) */
+.geo-selbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.geo-sel-main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.geo-sel-ic { width: 40px; height: 40px; border-radius: 11px; display: grid; place-items: center; flex-shrink: 0;
+  background: rgba(57,101,255,.12); color: var(--info); }
+.geo-sel-ic.crit { background: var(--crit-bg); color: var(--crit); }
+.geo-sel-ic.high { background: var(--high-bg); color: var(--high); }
+.geo-sel-ic.med { background: var(--med-bg); color: var(--med); }
+.geo-sel-ic.benign { background: var(--low-bg); color: var(--low); }
+.geo-sel-subj { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.geo-sel-sub { font-size: .8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* analyzed-messages history */
+.geo-hist { display: flex; flex-direction: column; gap: 4px; }
+.geo-hist-row { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; cursor: pointer;
+  background: none; border: none; border-radius: 10px; padding: 10px 8px; color: var(--text); border-bottom: 1px solid var(--line); }
+.geo-hist-row:last-child { border-bottom: none; }
+.geo-hist-row:hover { background: var(--card-2); }
+.geo-hist-row.on { background: var(--violet-dim); }
+.geo-hist-ic { width: 34px; height: 34px; border-radius: 9px; display: grid; place-items: center; flex-shrink: 0;
+  background: rgba(57,101,255,.12); color: var(--info); }
+.geo-hist-ic.crit { background: var(--crit-bg); color: var(--crit); }
+.geo-hist-ic.high { background: var(--high-bg); color: var(--high); }
+.geo-hist-ic.med { background: var(--med-bg); color: var(--med); }
+.geo-hist-ic.benign { background: var(--low-bg); color: var(--low); }
+.geo-hist-main { flex: 1; min-width: 0; }
+.geo-hist-subj { font-weight: 600; font-size: .88rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.geo-hist-ip { font-size: .75rem; margin-top: 1px; }
+.geo-hist-time { font-size: .75rem; min-width: 60px; text-align: right; }
 
 .geo-grid { display: grid; grid-template-columns: 1fr 1.5fr; gap: 20px; margin-top: 20px; }
 .geo-details { display: flex; flex-direction: column; }

@@ -45,7 +45,7 @@ describe('M2 trust boundary on bec.eml', () => {
     const boundary = resolveTrustBoundary(hops, new Set(['mx.example.ac.in']), []);
     expect(boundary).not.toBeNull();
     expect(boundary!.seq).toBe(2);
-    expect(boundary!.from_ip).toBe('203.0.113.44'); // defensible origin
+    expect(boundary!.from_ip).toBe('139.59.1.1'); // defensible origin
     expect(boundary!.trust).toBe(HopTrust.BOUNDARY);
     expect(hops[3].trust).toBe(HopTrust.TRUSTED);
     expect(hops[0].trust).toBe(HopTrust.UNVERIFIED); // below the boundary
@@ -62,7 +62,7 @@ describe('M2 trust boundary on bec.eml', () => {
     const ev = await analyze('c', email);
     const forged = ev.find((e) => e.signal === 'forged_received_hop');
     expect(forged?.status).toBe(Status.TRIGGERED);
-    expect(forged?.detail.authenticated_origin).toBe('203.0.113.44');
+    expect(forged?.detail.authenticated_origin).toBe('139.59.1.1');
     expect(forged?.detail.boundary_seq).toBe(2);
     expect(forged?.detail.injected_hops).toContain(0);
 
@@ -78,7 +78,7 @@ describe('M2 trust boundary on bec.eml', () => {
   it('authenticatedOrigin uses configured infra (default fixture MX)', async () => {
     const email = await parseEmail(fixture('bec.eml'));
     const { boundary } = authenticatedOrigin(email);
-    expect(boundary?.from_ip).toBe('203.0.113.44');
+    expect(boundary?.from_ip).toBe('139.59.1.1');
   });
 });
 

@@ -37,7 +37,7 @@ describe('case-service pipeline', () => {
     expect(ev.records.some((r) => r.signal === 'forged_received_hop' && r.status === 'TRIGGERED')).toBe(true);
 
     const art = caseArtifacts(rec!);
-    expect(art.ips.some((i) => i.ip === '203.0.113.44')).toBe(true);
+    expect(art.ips.some((i) => i.ip === '139.59.1.1')).toBe(true);
     expect(art.urls[0]).toHaveProperty('display');
 
     const item = caseListItem(rec!);

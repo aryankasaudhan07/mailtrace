@@ -7,6 +7,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { runAll } from './analyzers/index';
 import { parseHops, resolveTrustBoundary } from './analyzers/m2_headers';
+import { isPublicIp } from './analyzers/ip';
 import { config } from './config';
 import { parseEmail } from './ingest/parser';
 import { scoreCase } from './scoring/engine';
@@ -175,6 +176,12 @@ export function caseArtifacts(c: StoredCase) {
 
 export function caseListItem(c: StoredCase) {
   const r = rec(c);
+  // authenticated origin (boundary hop), else the earliest routable hop
+  const boundaryHop = r.hops.find((h) => h.trust === 'BOUNDARY');
+  const originIp =
+    boundaryHop && isPublicIp(boundaryHop.from_ip)
+      ? boundaryHop.from_ip
+      : r.hops.find((h) => isPublicIp(h.from_ip))?.from_ip ?? null;
   return {
     case_id: r.case_id,
     subject: r.subject || r.filename || '(no subject)',
@@ -185,6 +192,7 @@ export function caseListItem(c: StoredCase) {
     analyzed_at: r.analyzed_at,
     attachments: r.attachments.length,
     urls: r.urls.length,
+    origin_ip: originIp,
   };
 }
 
