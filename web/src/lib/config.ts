@@ -6,7 +6,10 @@
  */
 
 function csv(v: string | undefined, fallback: string): string[] {
-  return (v ?? fallback)
+  // `||` (not `??`) so a present-but-empty env var falls back to the default too
+  // -- an empty TRUSTED_MX_HOSTS would otherwise leave the trust boundary
+  // unresolvable (all hops UNVERIFIED).
+  return (v || fallback)
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean);
