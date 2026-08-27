@@ -28,9 +28,13 @@ export function AuthProvider({ children }) {
     const r = await api.resetVerify(email, otp, password)
     setToken(r.token); setUser(r.user); return r.user
   }
+  const updateProfile = async (name) => {
+    const r = await api.updateProfile(name)
+    setUser(r.user); return r.user
+  }
   const logout = () => { setToken(null); setUser(null) }
 
-  return <AuthCtx.Provider value={{ user, ready, login, registerRequest, registerVerify, resetRequest, resetVerify, logout }}>{children}</AuthCtx.Provider>
+  return <AuthCtx.Provider value={{ user, ready, login, registerRequest, registerVerify, resetRequest, resetVerify, updateProfile, logout }}>{children}</AuthCtx.Provider>
 }
 
 export function RequireAuth({ children }) {

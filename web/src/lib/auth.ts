@@ -97,6 +97,17 @@ export async function me(token: string): Promise<PublicUser> {
   return pub(email, u);
 }
 
+export async function updateProfile(token: string, patch: { name?: string }): Promise<PublicUser> {
+  await seed();
+  const email = token ? verifyToken(token) : null;
+  const u = email ? await getUser(email) : null;
+  if (!email || !u) throw new HttpError(401, 'Not authenticated');
+  const name = (patch.name ?? '').trim();
+  if (!name) throw new HttpError(400, 'Display name cannot be empty');
+  await putUser(email, { ...u, name });
+  return pub(email, (await getUser(email)) as User);
+}
+
 // --- OTP helpers ------------------------------------------------------------
 function newOtp(): string {
   return String(randomInt(0, 1_000_000)).padStart(6, '0');

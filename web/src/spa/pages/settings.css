@@ -4,6 +4,12 @@
 .avatar.lg { width: 58px; height: 58px; border-radius: 14px; }
 .prof-name { font-size: 1.1rem; font-weight: 700; }
 
+.prof-edit { margin-top: 18px; }
+.prof-input { width: 100%; margin-top: 6px; background: var(--card-2); border: 1px solid var(--line-2);
+  border-radius: 12px; padding: 11px 14px; color: var(--text); font-size: .92rem; outline: none; }
+.prof-input:focus { border-color: var(--violet); }
+.prof-actions { display: flex; gap: 10px; margin-top: 16px; }
+
 .pref { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .pref:last-of-type { border-bottom: none; }
 .pref-t { font-weight: 600; font-size: .9rem; }

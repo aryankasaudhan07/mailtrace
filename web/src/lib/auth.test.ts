@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
-  __resetAuth, login, me, resetRequest, resetVerify, registerRequest, registerVerify, HttpError,
+  __resetAuth, login, me, resetRequest, resetVerify, registerRequest, registerVerify, updateProfile, HttpError,
 } from './auth';
 
 beforeEach(() => {
@@ -48,5 +48,18 @@ describe('auth', () => {
 
   it('reset for unknown email is 404', async () => {
     await expect(resetRequest('nobody@nowhere.test')).rejects.toMatchObject({ status: 404 });
+  });
+
+  it('updates the display name (persists across me())', async () => {
+    const r = await login('admin@mailtrace.io', 'demo1234');
+    const u = await updateProfile(r.token, { name: 'Aditya K' });
+    expect(u.name).toBe('Aditya K');
+    expect((await me(r.token)).name).toBe('Aditya K');
+  });
+
+  it('rejects an empty name and a bad token', async () => {
+    const r = await login('admin@mailtrace.io', 'demo1234');
+    await expect(updateProfile(r.token, { name: '   ' })).rejects.toMatchObject({ status: 400 });
+    await expect(updateProfile('bad-token', { name: 'X' })).rejects.toMatchObject({ status: 401 });
   });
 });

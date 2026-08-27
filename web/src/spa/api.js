@@ -25,6 +25,7 @@ export const api = {
   resetRequest: (email) => j('/api/auth/reset/request', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) }),
   resetVerify: (email, otp, password) => j('/api/auth/reset/verify', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, otp, password }) }),
   me: () => j('/api/auth/me'),
+  updateProfile: (name) => j('/api/auth/profile', { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name }) }),
   // data
   health: () => j('/api/health'),
   stats: () => j('/api/stats'),

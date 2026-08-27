@@ -10,10 +10,26 @@ function Toggle({ on, onClick }) {
 }
 
 export default function Settings() {
-  const { user } = useAuth() || {}
+  const { user, updateProfile } = useAuth() || {}
   const [health, setHealth] = useState(null)
   const [prefs, setPrefs] = useState({ realtime: true, autoQuarantine: false, emailAlerts: true, weeklyDigest: true, aiContent: true })
   const set = (k) => () => setPrefs((p) => ({ ...p, [k]: !p[k] }))
+
+  // profile edit
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [msg, setMsg] = useState(null)
+  const startEdit = () => { setName(user?.name || ''); setMsg(null); setEditing(true) }
+  const saveProfile = async () => {
+    setSaving(true); setMsg(null)
+    try {
+      await updateProfile(name.trim())
+      setEditing(false); setMsg('Profile updated.')
+    } catch (e) {
+      setMsg(String(e.message || e))
+    } finally { setSaving(false) }
+  }
 
   useEffect(() => { api.health().then(setHealth).catch(() => {}) }, [])
 
@@ -30,12 +46,33 @@ export default function Settings() {
               <div className="muted">{user?.email || 'admin@mailtrace.io'}</div>
               <span className="badge violet" style={{ marginTop: 6 }}>{user?.role || 'Administrator'}</span></div>
           </div>
-          <div className="inforows" style={{ marginTop: 18 }}>
-            <div className="inforow"><span className="dim">Display name</span><span className="infoval">{user?.name || '—'}</span></div>
-            <div className="inforow"><span className="dim">Email</span><span className="infoval">{user?.email || '—'}</span></div>
-            <div className="inforow"><span className="dim">Role</span><span className="infoval">{user?.role || '—'}</span></div>
-          </div>
-          <button className="btn ghost" style={{ marginTop: 16 }}>Edit profile</button>
+          {editing ? (
+            <div className="prof-edit">
+              <label className="pref-t" htmlFor="dn">Display name</label>
+              <input id="dn" className="prof-input" value={name} onChange={(e) => setName(e.target.value)}
+                placeholder="Your name" autoFocus />
+              <div className="inforows" style={{ marginTop: 14 }}>
+                <div className="inforow"><span className="dim">Email</span><span className="infoval">{user?.email || '—'}</span> </div>
+                <div className="inforow"><span className="dim">Role</span><span className="infoval">{user?.role || '—'}</span></div>
+              </div>
+              <div className="prof-actions">
+                <button className="btn" disabled={saving || !name.trim()} onClick={saveProfile} style={{ opacity: saving || !name.trim() ? 0.6 : 1 }}>
+                  <Check size={15} /> {saving ? 'Saving…' : 'Save'}
+                </button>
+                <button className="btn ghost" onClick={() => setEditing(false)} disabled={saving}>Cancel</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="inforows" style={{ marginTop: 18 }}>
+                <div className="inforow"><span className="dim">Display name</span><span className="infoval">{user?.name || '—'}</span></div>
+                <div className="inforow"><span className="dim">Email</span><span className="infoval">{user?.email || '—'}</span></div>
+                <div className="inforow"><span className="dim">Role</span><span className="infoval">{user?.role || '—'}</span></div>
+              </div>
+              <button className="btn ghost" style={{ marginTop: 16 }} onClick={startEdit}>Edit profile</button>
+            </>
+          )}
+          {msg && <div className="set-saved" style={{ color: msg.includes('updated') ? 'var(--low)' : 'var(--crit)' }}><Check size={14} /> {msg}</div>}
         </div>
 
         <div className="card">

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Search, Mail, Paperclip, ChevronRight } from 'lucide-react'
 import PageHead from '../components/PageHead.jsx'
 import { api, bandInfo, timeAgo } from '../api.js'
@@ -9,9 +9,13 @@ const FILTERS = ['All', 'CRITICAL', 'HIGH_RISK', 'SUSPICIOUS', 'BENIGN']
 
 export default function History() {
   const nav = useNavigate()
+  const [params] = useSearchParams()
   const [items, setItems] = useState(null)
-  const [q, setQ] = useState('')
+  const [q, setQ] = useState(params.get('q') || '')
   const [f, setF] = useState('All')
+
+  // keep the search box in sync when the topbar search navigates here with ?q=
+  useEffect(() => { setQ(params.get('q') || '') }, [params])
 
   useEffect(() => { api.listCases().then((r) => setItems(r.items || [])).catch(() => setItems([])) }, [])
 
