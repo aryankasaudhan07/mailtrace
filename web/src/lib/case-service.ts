@@ -207,7 +207,7 @@ const TYPE: Record<string, string> = {
   spf_fail_hard: 'Spoofing', dmarc_fail_strict: 'Spoofing',
   origin_anonymized: 'Anonymized', campaign_infrastructure_reuse: 'Campaign',
 };
-const BUCKET: Record<string, string> = { CRITICAL: 'high', HIGH_RISK: 'high', SUSPICIOUS: 'medium', BENIGN: 'low' };
+const BUCKET: Record<string, string> = { CRITICAL: 'critical', HIGH_RISK: 'high', SUSPICIOUS: 'medium', BENIGN: 'low' };
 
 function threatType(v: Verdict): string {
   const pos = v.contributions.filter((c) => c.points > 0).sort((a, b) => b.points - a.points);
@@ -239,11 +239,11 @@ export async function buildStats() {
     d.setUTCDate(d.getUTCDate() - i);
     trendDays.push(d.toISOString().slice(0, 10));
   }
-  const trend = trendDays.map((d) => ({ day: d, high: 0, medium: 0, low: 0 }));
+  const trend = trendDays.map((d) => ({ day: d, critical: 0, high: 0, medium: 0, low: 0 }));
   const trendByDay = new Map(trend.map((t) => [t.day, t]));
   for (const c of cases) {
     const t = trendByDay.get(day(c.analyzed_at));
-    if (t) t[(BUCKET[c.verdict.band] ?? 'low') as 'high' | 'medium' | 'low'] += 1;
+    if (t) t[(BUCKET[c.verdict.band] ?? 'low') as 'critical' | 'high' | 'medium' | 'low'] += 1;
   }
 
   const recent = [...cases]

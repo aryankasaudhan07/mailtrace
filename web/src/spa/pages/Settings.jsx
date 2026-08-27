@@ -88,7 +88,7 @@ export default function Settings() {
           {[
             ['realtime', 'Real-time analysis', 'Score every inbound message on arrival'],
             ['aiContent', 'AI content analysis (M4)', 'Use the NLP classifier for social-engineering intent'],
-            ['autoQuarantine', 'Auto-quarantine CRITICAL', 'Hold messages scoring 75+ for review'],
+            ['autoQuarantine', 'Auto-quarantine CRITICAL', 'Hold messages scoring 76+ for review'],
           ].map(([k, t, d]) => (
             <div className="pref" key={k}>
               <div><div className="pref-t">{t}</div><div className="muted" style={{ fontSize: '.8rem' }}>{d}</div></div>

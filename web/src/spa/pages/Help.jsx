@@ -7,7 +7,7 @@ import './help.css'
 const FAQ = [
   ['How is the threat score calculated?', 'Six analyzers each emit evidence (header forensics, SPF/DKIM/DMARC, NLP content, network, domain, and campaign correlation). A single explainable weight table combines them into a 0–100 score and a band. Every point is traceable in the AI Analysis Breakdown.'],
   ['Why did a legitimate-looking email score high?', 'The most damaging attacks authenticate correctly. The scorer never lets good authentication cancel evidence of deception — a valid signature reduces risk only on an otherwise clean message.'],
-  ['What do the verdict bands mean?', 'BENIGN (0–24), SUSPICIOUS (25–49), HIGH_RISK (50–74), CRITICAL (75–100). Confidence is separate and reflects how many analyzers ran.'],
+  ['What do the verdict bands mean?', 'CLEAN (1–25), SUSPICIOUS (26–50), HIGH RISK (51–75), CRITICAL (76–100). Confidence is separate and reflects how many analyzers ran.'],
   ['Is my email data stored?', 'In this demo, analyzed messages live in memory for the session. Evidence and audit logs are append-only by design; nothing is sent to third parties.'],
   ['What are IOCs and campaigns?', 'Indicators of Compromise are the IPs, domains, URLs and file hashes extracted from a message. When two cases share attacker infrastructure, they are correlated into a campaign under Threat Intelligence.'],
 ]

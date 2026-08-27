@@ -48,10 +48,10 @@ export const api = {
 // ---- shared derivations used across pages ----
 
 export const BANDS = {
-  CRITICAL:   { key: 'crit',   label: 'Critical', risk: 'HIGH RISK' },
-  HIGH_RISK:  { key: 'high',   label: 'High',     risk: 'HIGH RISK' },
+  CRITICAL:   { key: 'crit',   label: 'Critical',  risk: 'CRITICAL' },
+  HIGH_RISK:  { key: 'high',   label: 'High Risk', risk: 'HIGH RISK' },
   SUSPICIOUS: { key: 'med',    label: 'Suspicious', risk: 'MEDIUM RISK' },
-  BENIGN:     { key: 'benign', label: 'Benign',   risk: 'LOW RISK' },
+  BENIGN:     { key: 'benign', label: 'Clean',     risk: 'LOW RISK' },
 }
 export const bandInfo = (band) => BANDS[band] || BANDS.SUSPICIOUS
 

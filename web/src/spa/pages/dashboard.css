@@ -1,9 +1,10 @@
-.stat-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 20px; }
+.stat-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
 .stat-card { display: flex; align-items: center; gap: 14px; background: var(--card);
   border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; }
 .stat-ic { width: 46px; height: 46px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0; }
 .stat-ic.info { color: var(--info); background: #4d8dff1a; }
 .stat-ic.crit { color: var(--crit); background: var(--crit-bg); }
+.stat-ic.high { color: var(--high); background: var(--high-bg); }
 .stat-ic.med { color: var(--med); background: var(--med-bg); }
 .stat-ic.low { color: var(--low); background: var(--low-bg); }
 .stat-meta { flex: 1; }

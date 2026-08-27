@@ -34,20 +34,22 @@ export default function Dashboard() {
   if (!s) return <div><PageHead title="Dashboard" /><div className="card">Loading…</div></div>
 
   const b = s.buckets || {}
-  const high = b.high || 0, med = b.medium || 0, low = b.low || 0
+  const crit = b.critical || 0, high = b.high || 0, med = b.medium || 0, low = b.low || 0
   const donut = [
-    { name: 'High', value: high, color: 'var(--crit)' },
-    { name: 'Medium', value: med, color: 'var(--med)' },
-    { name: 'Low', value: low, color: 'var(--low)' },
+    { name: 'Critical', value: crit, color: 'var(--crit)' },
+    { name: 'High Risk', value: high, color: 'var(--high)' },
+    { name: 'Suspicious', value: med, color: 'var(--med)' },
+    { name: 'Clean', value: low, color: 'var(--low)' },
   ]
   const pct = (n) => (s.total ? Math.round((n / s.total) * 100) : 0)
   const typeTotal = s.threat_types.reduce((a, [, n]) => a + n, 0) || 1
 
   const stats = [
     { icon: Mail, tone: 'info', label: 'Total Analyses', n: s.total },
-    { icon: ShieldAlert, tone: 'crit', label: 'High Threats', n: high },
-    { icon: AlertTriangle, tone: 'med', label: 'Medium Threats', n: med },
-    { icon: ShieldCheck, tone: 'low', label: 'Low / Benign', n: low },
+    { icon: ShieldAlert, tone: 'crit', label: 'Critical', n: crit },
+    { icon: AlertTriangle, tone: 'high', label: 'High Risk', n: high },
+    { icon: AlertTriangle, tone: 'med', label: 'Suspicious', n: med },
+    { icon: ShieldCheck, tone: 'low', label: 'Clean', n: low },
   ]
 
   return (
@@ -139,9 +141,10 @@ export default function Dashboard() {
               <XAxis dataKey="day" tick={{ fill: 'var(--text-3)', fontSize: 11 }} tickFormatter={(d) => d.slice(5)} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: 'var(--text-3)', fontSize: 11 }} axisLine={false} tickLine={false} allowDecimals={false} />
               <Tooltip contentStyle={{ background: 'var(--raised)', border: '1px solid var(--line-2)', borderRadius: 10, fontSize: 12 }} />
-              <Line type="monotone" dataKey="high" stroke="var(--crit)" strokeWidth={2} dot={{ r: 3 }} name="High" />
-              <Line type="monotone" dataKey="medium" stroke="var(--med)" strokeWidth={2} dot={{ r: 3 }} name="Medium" />
-              <Line type="monotone" dataKey="low" stroke="var(--low)" strokeWidth={2} dot={{ r: 3 }} name="Low" />
+              <Line type="monotone" dataKey="critical" stroke="var(--crit)" strokeWidth={2} dot={{ r: 3 }} name="Critical" />
+              <Line type="monotone" dataKey="high" stroke="var(--high)" strokeWidth={2} dot={{ r: 3 }} name="High Risk" />
+              <Line type="monotone" dataKey="medium" stroke="var(--med)" strokeWidth={2} dot={{ r: 3 }} name="Suspicious" />
+              <Line type="monotone" dataKey="low" stroke="var(--low)" strokeWidth={2} dot={{ r: 3 }} name="Clean" />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -165,9 +168,9 @@ export default function Dashboard() {
 }
 
 function Spark({ trend, tone }) {
-  const key = tone === 'crit' ? 'high' : tone === 'med' ? 'medium' : tone === 'low' ? 'low' : 'high'
-  const color = tone === 'crit' ? 'var(--crit)' : tone === 'med' ? 'var(--med)' : tone === 'low' ? 'var(--low)' : 'var(--info)'
-  const data = (trend || []).map((d) => ({ v: tone === 'info' ? d.high + d.medium + d.low : d[key] }))
+  const key = tone === 'crit' ? 'critical' : tone === 'high' ? 'high' : tone === 'med' ? 'medium' : tone === 'low' ? 'low' : 'critical'
+  const color = tone === 'crit' ? 'var(--crit)' : tone === 'high' ? 'var(--high)' : tone === 'med' ? 'var(--med)' : tone === 'low' ? 'var(--low)' : 'var(--info)'
+  const data = (trend || []).map((d) => ({ v: tone === 'info' ? d.critical + d.high + d.medium + d.low : d[key] }))
   return (
     <div style={{ width: 74, height: 40 }}>
       <ResponsiveContainer width="100%" height="100%">

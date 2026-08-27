@@ -6,16 +6,16 @@
 import type { Analyzer } from './evidence';
 
 export enum Band {
-  BENIGN = 'BENIGN', // 0-24
-  SUSPICIOUS = 'SUSPICIOUS', // 25-49
-  HIGH_RISK = 'HIGH_RISK', // 50-74
-  CRITICAL = 'CRITICAL', // 75-100
+  BENIGN = 'BENIGN', // 1-25 (clean)
+  SUSPICIOUS = 'SUSPICIOUS', // 26-50
+  HIGH_RISK = 'HIGH_RISK', // 51-75
+  CRITICAL = 'CRITICAL', // 76-100
 }
 
 export function bandFromScore(score: number): Band {
-  if (score >= 75) return Band.CRITICAL;
-  if (score >= 50) return Band.HIGH_RISK;
-  if (score >= 25) return Band.SUSPICIOUS;
+  if (score >= 76) return Band.CRITICAL;
+  if (score >= 51) return Band.HIGH_RISK;
+  if (score >= 26) return Band.SUSPICIOUS;
   return Band.BENIGN;
 }
 

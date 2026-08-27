@@ -18,9 +18,10 @@ export default function Reports() {
   const b = stats?.buckets || {}
   const cards = [
     { icon: FileText, tone: 'info', label: 'Total Reports', n: stats ? stats.total : '—' },
-    { icon: ShieldAlert, tone: 'crit', label: 'High Risk', n: stats ? (b.high || 0) : '—' },
+    { icon: ShieldAlert, tone: 'crit', label: 'Critical', n: stats ? (b.critical || 0) : '—' },
+    { icon: ShieldAlert, tone: 'high', label: 'High Risk', n: stats ? (b.high || 0) : '—' },
     { icon: AlertTriangle, tone: 'med', label: 'Suspicious', n: stats ? (b.medium || 0) : '—' },
-    { icon: ShieldCheck, tone: 'low', label: 'Cleared', n: stats ? (b.low || 0) : '—' },
+    { icon: ShieldCheck, tone: 'low', label: 'Clean', n: stats ? (b.low || 0) : '—' },
   ]
 
   return (

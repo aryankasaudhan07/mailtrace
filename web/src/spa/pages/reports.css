@@ -1,4 +1,4 @@
-.rep-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 18px; margin-bottom: 20px; }
+.rep-cards { display: grid; grid-template-columns: repeat(5, 1fr); gap: 14px; margin-bottom: 20px; }
 .rep-stat { display: flex; align-items: center; gap: 13px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
 
 .rep-list { display: flex; flex-direction: column; gap: 10px; }
