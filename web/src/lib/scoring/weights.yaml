@@ -1,0 +1,264 @@
+# Mailtrace scoring rules.
+#
+# This file IS the verdict logic. Deliberately not a model: a forensic finding
+# has to be explainable to be usable, and you cannot defend a coefficient you
+# cannot read. Bump `version` on every change -- it is stamped into every report
+# so any past verdict can be reproduced against the rules that produced it.
+#
+# Tuning on stage is a feature. If a judge disagrees with a weight, open this
+# file and change the number in front of them.
+#
+# Owner: Track E
+
+version: "1.3.0"
+
+bands:
+  benign: [0, 24]
+  suspicious: [25, 49]
+  high_risk: [50, 74]
+  critical: [75, 100]
+
+# Confidence penalty applied per analyzer lane that could not run.
+# Four lanes down and the verdict is explicitly low-confidence.
+confidence_penalty_per_unavailable_lane: 0.15
+
+# Signals whose presence suppresses every negative-weight signal.
+#
+# Why this exists (see docs/THREAT-MODEL.md §7.1): a valid aligned DKIM signature
+# is exactly what thread hijacking, account takeover, vendor email compromise and
+# trusted-platform abuse all produce -- the classes where the losses are. Thread
+# hijacking alone is ~28% of BEC. Without suppression, -25 for `dkim_valid_aligned`
+# means the MORE damaging the attack class, the LOWER we score it. That is
+# backwards, and it was a real bug in v1.0.0.
+#
+# Cryptographic proof of authorship should still reduce risk on an otherwise clean
+# message. It must never cancel out positive evidence of forgery or impersonation.
+suppress_negatives_when_any_triggered:
+  - forged_received_hop
+  - brand_lookalike_domain
+  - reply_to_domain_mismatch
+  - private_ip_in_public_chain
+  - timestamp_regression
+  - campaign_infrastructure_reuse
+  - payment_diversion_intent
+  - credential_harvest_intent
+  - executive_impersonation
+
+signals:
+
+  # ---------------- M2 :: header and relay forensics (Track A) ----------------
+  forged_received_hop:
+    weight: 30
+    analyzer: M2
+    label: "Injected / forged Received hop"
+    rationale: "Deliberate deception. Near-zero false positive rate."
+
+  reply_to_domain_mismatch:
+    weight: 20
+    analyzer: M2
+    label: "Reply-To domain differs from From domain"
+    rationale: "Core BEC mechanic: reply diversion to an attacker-controlled inbox."
+
+  private_ip_in_public_chain:
+    weight: 16
+    analyzer: M2
+    label: "Private or reserved IP in a public relay chain"
+    rationale: "RFC 1918 / loopback / CGNAT addresses cannot appear in legitimate public transit."
+
+  fake_reply:
+    weight: 12
+    analyzer: M2
+    label: "Forged reply: 'Re:' subject with no thread history"
+    rationale: >
+      A 'Re:' (or 'Fwd:') subject with no In-Reply-To and no References header
+      is a reply to nothing -- the attacker fakes an existing conversation to
+      borrow trust. Cheap and high precision; 55.9% of VIP-impersonation attacks
+      manipulate the subject this way (see docs/THREAT-MODEL.md).
+
+  timestamp_regression:
+    weight: 14
+    analyzer: M2
+    label: "Relay timestamps run backwards"
+    rationale: "A hop dated earlier than the hop below it indicates fabricated headers."
+
+  chain_discontinuity:
+    weight: 14
+    analyzer: M2
+    label: "Relay chain does not join up"
+    rationale: "Hop N's 'by' host does not match hop N+1's 'from' host."
+
+  rdns_mismatch:
+    weight: 10
+    analyzer: M2
+    label: "Hostname does not resolve to claimed IP"
+    rationale: "Weak on its own -- legitimate misconfiguration is common -- but corroborating."
+
+  message_id_domain_divergence:
+    weight: 9
+    analyzer: M2
+    label: "Message-ID domain matches neither sender nor any relay"
+    rationale: "Well-behaved MTAs stamp their own domain into the Message-ID."
+
+  # ---------------- M3 :: authentication (Track B) ----------------
+  dmarc_fail_strict:
+    weight: 28
+    analyzer: M3
+    label: "DMARC fail with strict alignment"
+    rationale: "The domain owner explicitly published a policy this message violates."
+
+  spf_fail_hard:
+    weight: 14
+    analyzer: M3
+    label: "SPF hard fail"
+    rationale: "Weighted below DMARC because legitimate forwarding breaks SPF."
+
+  dkim_missing:
+    weight: 8
+    analyzer: M3
+    label: "No DKIM signature"
+    rationale: "Unremarkable alone; meaningful for domains that normally sign."
+
+  dkim_fail:
+    weight: 12
+    analyzer: M3
+    label: "DKIM signature present but invalid"
+    rationale: >
+      A signature that fails cryptographic verification means the signed content
+      was altered in transit or the signature was forged. Distinct from
+      dkim_missing (no signature at all): a broken signature is an affirmative
+      integrity failure, not just an absence.
+
+  dkim_valid_aligned:
+    weight: -18
+    analyzer: M3
+    label: "DKIM valid and aligned to From"
+    rationale: >
+      Cryptographic proof that the domain authorised this content. Reduced from
+      -25 and made suppressible in v1.1.0: a compromised mailbox signs validly
+      too, so this must lower risk on a clean message without ever masking
+      evidence of forgery.
+
+  # ---------------- M4 :: content intelligence (Track C) ----------------
+  payment_diversion_intent:
+    weight: 17
+    analyzer: M4
+    label: "Payment-diversion intent detected"
+    rationale: "Highest-loss BEC category; weighted above generic phishing."
+
+  classifier_phishing_high:
+    weight: 15
+    analyzer: M4
+    label: "Classifier phishing probability > 0.9"
+    rationale: "Strong, but not independent of the other content signals."
+
+  executive_impersonation:
+    weight: 12
+    analyzer: M4
+    label: "Display name impersonates a known executive"
+    rationale: "Requires a configured org directory; high value where present."
+
+  credential_harvest_intent:
+    weight: 14
+    analyzer: M4
+    label: "Credential harvesting intent detected"
+    rationale: "Login-themed urgency plus an off-domain form target."
+
+  hidden_text_mismatch:
+    weight: 16
+    analyzer: M4
+    label: "Hidden text differs from the visible message"
+    rationale: >
+      Text present in the HTML but hidden from the reader (display:none,
+      font-size:0, visibility:hidden, zero-width characters). This is how
+      AI-assistant prompt injection arrives (CVE-2026-26133) and how attackers
+      show a benign message to a person while hiding the real payload. There is
+      no legitimate reason to hide substantial text in a message body.
+
+  obfuscated_text:
+    weight: 14
+    analyzer: M4
+    label: "Text disguised with look-alike or invisible characters"
+    rationale: >
+      Mixed-script words (e.g. a Cyrillic 'e' inside a Latin word) or zero-width
+      characters inserted between letters, used to slip keywords past filters.
+      Legitimate mail does not disguise its own words this way. We fold the
+      disguise away before content classification so the real intent still scores.
+
+  links_no_text:
+    weight: 10
+    analyzer: M4
+    label: "External link with little or no readable text"
+    rationale: >
+      Image-based phishing hides the payload URL in a hyperlink wrapped around an
+      image, leaving the body almost text-free so keyword scans find nothing. A
+      near-empty message that still carries an external link is the tell.
+
+  # ---------------- M5 :: network intelligence (Track D) ----------------
+  origin_anonymized:
+    weight: 12
+    analyzer: M5
+    label: "Origin is a Tor exit or known VPN"
+    rationale: "Deliberate anonymization. Suspicious for transactional mail, not proof of intent."
+
+  origin_datacenter_hosted:
+    weight: 6
+    analyzer: M5
+    label: "Origin is datacenter-hosted, not an eyeball network"
+    rationale: "Very weak alone -- most legitimate bulk mail is too. Corroborating only."
+
+  obfuscated_url:
+    weight: 10
+    analyzer: M5
+    label: "Obfuscated or redirected URL"
+    rationale: "Shorteners and open redirects hide the true destination."
+
+  provider_withholds_origin:
+    weight: 0
+    analyzer: M5
+    label: "Sending provider withholds the originating IP"
+    rationale: >
+      Not a fraud signal -- an evidentiary one. Gmail and Outlook.com strip the
+      sender's IP for webmail-composed mail. Scores zero, but forces geolocation
+      confidence to zero and prints the lawful next step (a preservation request
+      to the provider) in the report. See architecture doc section 07.
+
+  # ---------------- M6 :: domain intelligence (Track B) ----------------
+  brand_lookalike_domain:
+    weight: 26
+    analyzer: M6
+    label: "Homoglyph / lookalike of a protected brand"
+    rationale: "There is no legitimate reason to register a confusable domain."
+
+  domain_age_lt_30d:
+    weight: 18
+    analyzer: M6
+    label: "Sender domain registered less than 30 days ago"
+    rationale: "Phishing infrastructure is disposable, and therefore young."
+
+  domain_no_mx:
+    weight: 9
+    analyzer: M6
+    label: "Sender domain publishes no MX record"
+    rationale: "A domain that cannot receive mail but is sending it."
+
+  # ---------------- M7 :: correlation graph (Track E) ----------------
+  campaign_infrastructure_reuse:
+    weight: 20
+    analyzer: M7
+    label: "Infrastructure matches an active campaign"
+    rationale: "Reuse of infrastructure already tied to a confirmed case."
+
+  known_correspondent:
+    weight: -14
+    analyzer: M7
+    label: "Sender in verified-correspondent history"
+    rationale: >
+      Established relationship across multiple clean prior messages. Reduced from
+      -20 and made suppressible in v1.1.0: a known correspondent is precisely the
+      thread-hijacker's position, and baseline poisoning is documented tradecraft.
+
+  domain_does_not_resolve:
+    weight: 10
+    analyzer: M6
+    label: "Domain does not resolve (no A record)"
+    rationale: "A non-resolving domain is either abandoned or completely spoofed."
