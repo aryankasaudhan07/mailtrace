@@ -104,8 +104,12 @@
     position: fixed; top: 0; left: 0; height: 100vh; height: 100dvh; width: 264px;
     transform: translateX(-100%); transition: transform .24s ease; z-index: 60;
     box-shadow: 0 0 40px rgba(0, 0, 0, .28);
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
   .sidebar.open { transform: translateX(0); }
+  /* in a scrollable drawer, margin-top:auto clips the top items when content
+     is taller than the viewport — let the content flow and scroll instead */
+  .sidecard { margin-top: 24px; }
   .drawer-close { display: inline-grid; place-items: center; }
 
   .scrim { display: block; position: fixed; inset: 0; z-index: 55;

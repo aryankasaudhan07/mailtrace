@@ -66,3 +66,11 @@
   display: flex; align-items: center; justify-content: center; gap: 8px; }
 
 @media (max-width: 940px) { .login-body { grid-template-columns: 1fr; } .hero { display: none; } }
+/* phone / small tablet: keep the brand on one line, drop the decorative
+   status + timestamp that were cramping the header */
+@media (max-width: 760px) {
+  .login { padding: 16px 18px; }
+  .login-top .brand { font-size: .9rem; }
+  .login-top .brand b { white-space: nowrap; }
+  .login-top-right { display: none; }
+}
