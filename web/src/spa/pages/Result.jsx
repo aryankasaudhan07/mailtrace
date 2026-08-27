@@ -208,7 +208,7 @@ export default function Result() {
         <div className="card">
           <div className="card-title">URL analysis ({urls.length})</div>
           {urls.length ? (
-            <table className="url-tbl">
+            <div className="tscroll"><table className="url-tbl">
               <thead><tr><th>Displayed</th><th>Destination</th><th>Verdict</th><th>Risk</th></tr></thead>
               <tbody>
                 {urls.slice(0, 8).map((u, i) => {
@@ -225,7 +225,7 @@ export default function Result() {
                   )
                 })}
               </tbody>
-            </table>
+            </table></div>
           ) : <div className="muted center" style={{ padding: 20 }}>No URLs in this message.</div>}
         </div>
 

@@ -41,7 +41,7 @@ export default function History() {
         </div>
 
         {items === null ? <div className="muted center" style={{ padding: 30 }}>Loading…</div> : (
-          <table className="dtable hist-table">
+          <div className="tscroll"><table className="dtable hist-table">
             <thead><tr><th>Message</th><th>Sender</th><th>Score</th><th>Verdict</th><th>IOCs</th><th>Analyzed</th><th /></tr></thead>
             <tbody>
               {rows.map((r) => {
@@ -61,7 +61,7 @@ export default function History() {
               })}
               {!rows.length && <tr><td colSpan="7" className="muted center" style={{ padding: 30 }}>No matching analyses. <a className="violet-link" onClick={() => nav('/analyze')}>Analyze an email →</a></td></tr>}
             </tbody>
-          </table>
+          </table></div>
         )}
       </div>
     </div>

@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 // Self-hosted DM Sans (bundled — zero third-party font requests)
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
@@ -9,6 +9,12 @@ import '@/spa/theme.css';
 export const metadata: Metadata = {
   title: 'Mailtrace — Email Threat Intelligence',
   description: 'Email threat detection, geolocation and forensic intelligence.',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

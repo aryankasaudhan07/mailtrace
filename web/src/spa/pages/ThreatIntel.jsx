@@ -74,7 +74,7 @@ export default function ThreatIntel() {
         <div className="card">
           <div className="card-title">Shared Infrastructure (IOCs)</div>
           {iocs.length ? (
-            <table className="dtable ti-table">
+            <div className="tscroll"><table className="dtable ti-table">
               <thead><tr><th>Type</th><th>Indicator</th><th>Cases</th></tr></thead>
               <tbody>
                 {iocs.slice(0, 12).map((s) => {
@@ -88,7 +88,7 @@ export default function ThreatIntel() {
                   )
                 })}
               </tbody>
-            </table>
+            </table></div>
           ) : <div className="muted center" style={{ padding: 26 }}>No shared indicators across cases yet.</div>}
         </div>
       </div>

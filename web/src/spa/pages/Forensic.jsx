@@ -238,7 +238,7 @@ function IocTable({ title, icon: Icon, rows, cols, badgeCol, tone }) {
     <div className="card">
       <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Icon size={17} /> {title} ({rows.length})</div>
       {rows.length ? (
-        <table className="ftable"><thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr></thead>
+        <div className="tscroll"><table className="ftable"><thead><tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr></thead>
           <tbody>{rows.map((r, i) => (
             <tr key={i}>{r.map((cell, j) => {
               if (j === badgeCol) {
@@ -248,7 +248,7 @@ function IocTable({ title, icon: Icon, rows, cols, badgeCol, tone }) {
               return <td key={j} className={j === 0 ? 'mono ftrunc' : 'muted'}>{cell}</td>
             })}</tr>
           ))}</tbody>
-        </table>
+        </table></div>
       ) : <div className="muted center">None extracted.</div>}
     </div>
   )

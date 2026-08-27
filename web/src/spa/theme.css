@@ -138,3 +138,9 @@ button { font-family: inherit; cursor: pointer; }
 .dtable tr:last-child td { border-bottom: none; }
 .dtable tbody tr.click { cursor: pointer; }
 .dtable tbody tr.click:hover td { background: var(--card-2); }
+
+/* ---- horizontal scroll wrapper for wide tables on small screens ---- */
+.tscroll { width: 100%; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+@media (max-width: 760px) {
+  .tscroll .dtable, .tscroll .url-tbl, .tscroll .ftable { min-width: 560px; }
+}
