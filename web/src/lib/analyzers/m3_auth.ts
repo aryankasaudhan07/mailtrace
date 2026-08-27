@@ -23,15 +23,15 @@ import { DKIM_DEMO_KEYS } from './dkim_demo_keys';
 // Resolver for DKIM key lookups: serve bundled demo keys locally (so the
 // self-contained signed samples verify without DNS), else use real DNS.
 export async function dkimResolver(name: string, rr: string): Promise<string[][]> {
-  if (rr === 'TXT' && DKIM_DEMO_KEYS[name]) return [[DKIM_DEMO_KEYS[name]]];
-  if (rr === 'TXT') {
-    try {
-      return await resolveTxt(name);
-    } catch {
-      return [];
-    }
+  if (rr !== 'TXT') return [];
+  // normalize: some runtimes hand the resolver an FQDN with a trailing dot / mixed case
+  const key = name.replace(/\.$/, '').toLowerCase();
+  if (DKIM_DEMO_KEYS[key]) return [[DKIM_DEMO_KEYS[key]]];
+  try {
+    return await resolveTxt(key);
+  } catch {
+    return [];
   }
-  return [];
 }
 
 const DMARC_P_RE = /[;\s]p\s*=\s*(\w+)/i;
