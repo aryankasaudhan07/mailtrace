@@ -51,7 +51,7 @@ export default function Reports() {
                       <div className="muted" style={{ fontSize: '.8rem' }}>{r.from_addr} · {timeAgo(r.analyzed_at)}</div>
                     </div>
                     <span className={'badge ' + info.key}>{info.label} · {r.score}</span>
-                    <a className="btn ghost sm" href={`/api/cases/${r.case_id}/report/text`} target="_blank" rel="noreferrer"><Download size={14} /> Report</a>
+                    <a className="btn ghost sm" href={`/api/cases/${r.case_id}/report`} target="_blank" rel="noreferrer"><Download size={14} /> Report</a>
                     <button className="btn ghost sm" onClick={() => nav(`/forensic/${r.case_id}`)}><FileSearch size={14} /> Forensic</button>
                   </div>
                 )

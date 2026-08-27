@@ -46,7 +46,7 @@ export default function Forensic() {
   return (
     <div>
       <PageHead title="Forensic Analysis" back={{ to: `/result/${id}`, label: 'Back to Result' }}
-        actions={<a className="btn ghost" href={`/api/cases/${id}/report/text`} target="_blank" rel="noreferrer"><Download size={16} /> Report</a>} />
+        actions={<a className="btn ghost" href={`/api/cases/${id}/report`} target="_blank" rel="noreferrer"><Download size={16} /> Report</a>} />
 
       {/* persistent verdict strip — same context as the Result page */}
       <div className="fo-verdict card">
