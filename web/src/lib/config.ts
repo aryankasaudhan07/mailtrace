@@ -41,4 +41,8 @@ export const config = {
   intelDir(): string {
     return process.env.INTEL_DIR ?? `${process.cwd()}/../intel`;
   },
+  /** Whether online geo (ip-api.com) may be used. Tests set GEO_DISABLE_ONLINE=1. */
+  geoOnline(): boolean {
+    return process.env.GEO_DISABLE_ONLINE !== '1';
+  },
 };

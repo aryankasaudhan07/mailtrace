@@ -8,7 +8,10 @@ import {
 
 const bec = () => readFileSync(join(process.cwd(), 'test/fixtures/bec.eml'));
 
-beforeAll(() => { process.env.INTEL_DIR = join(process.cwd(), 'test/fixtures/intel'); });
+beforeAll(() => {
+  process.env.INTEL_DIR = join(process.cwd(), 'test/fixtures/intel');
+  process.env.GEO_DISABLE_ONLINE = '1'; // keep the pipeline offline in tests
+});
 beforeEach(() => __resetStore());
 
 describe('case-service pipeline', () => {

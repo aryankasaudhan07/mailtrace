@@ -17,6 +17,7 @@ import type { Hop, ParsedEmail } from '../schemas/email';
 import { register } from './base';
 import { authenticatedOrigin } from './m2_headers';
 import { isPublicIp, ipInCidrs, parseCidr } from './ip';
+import { ipApiLookup } from '../geo';
 
 const WEBMAIL_PROVIDERS = new Set([
   'gmail.com', 'googlemail.com', 'outlook.com', 'hotmail.com',
@@ -82,10 +83,7 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
   const hasVpn = existsSync(intel('vpn-ipv4.txt'));
   const hasDatacenter = existsSync(intel('datacenter-ipv4.txt'));
 
-  if (!hasGeoip && !hasTor && !hasVpn && !hasDatacenter) {
-    return [unavailable(caseId, Analyzer.M5_NETWORK, 'origin_anonymized',
-      'M5 unavailable: no intel data files in intel/.')];
-  }
+  const localIntel = hasGeoip || hasTor || hasVpn || hasDatacenter;
 
   if (!routable.length) {
     const fromDomain = (email.from_addr || '').split('@').pop()!.toLowerCase();
@@ -105,14 +103,24 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
   const originHop: Hop = boundary && isPublicIp(boundary.from_ip) ? boundary : routable[0];
   const trustConf = (hop: Hop): number => (boundary === null || hop.seq >= boundary.seq ? 1.0 : 0.7);
 
+  // Online origin lookup (ip-api.com): geo + proxy/hosting classification. This
+  // makes M5 work on serverless (no local intel needed); offline lists still
+  // win when present (dev). UNAVAILABLE only when neither source is usable.
+  const online = config.geoOnline() ? await ipApiLookup(originHop.from_ip!) : null;
+  if (!localIntel && !online) {
+    return [unavailable(caseId, Analyzer.M5_NETWORK, 'origin_anonymized',
+      'M5 unavailable: no offline intel files and ip-api.com unreachable.')];
+  }
+
   const ev: Evidence[] = [];
 
-  // anonymizer (Tor / VPN): scan the whole chain, report the lowest-seq hit
+  // anonymizer: offline chain scan (Tor/VPN) first, else ip-api's proxy flag on the origin
   let anon: { hop: Hop; kind: string } | null = null;
   for (const hop of routable) {
     if (hasTor && checkTorExit(hop.from_ip!)) { anon = { hop, kind: 'Tor exit node' }; break; }
     if (hasVpn && checkVpn(hop.from_ip!)) { anon = { hop, kind: 'known VPN range' }; break; }
   }
+  if (!anon && online?.proxy) anon = { hop: originHop, kind: 'proxy / VPN / Tor exit (ip-api.com)' };
   if (anon) {
     const conf = trustConf(anon.hop);
     const region = conf === 1.0 ? 'authenticated origin' : 'unverified region below the trust boundary';
@@ -125,16 +133,20 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
     }, conf));
   }
 
-  // datacenter-hosted origin: test the authenticated origin only
-  if (hasDatacenter && checkDatacenter(originHop.from_ip!)) {
+  // datacenter-hosted origin: offline list on the origin, or ip-api's hosting flag
+  const isDatacenter = (hasDatacenter && checkDatacenter(originHop.from_ip!)) || Boolean(online?.hosting);
+  if (isDatacenter) {
     ev.push(triggered(caseId, Analyzer.M5_NETWORK, 'origin_datacenter_hosted', {
       ip: originHop.from_ip,
       hop_seq: originHop.seq,
-      explanation: 'Authenticated origin is a datacenter range, not an eyeball/residential network.',
+      explanation: 'Authenticated origin is a datacenter/hosting network, not an eyeball/residential network.',
     }, trustConf(originHop)));
   }
 
-  const geo = hasGeoip ? await geoipLookup(originHop.from_ip!) : null;
+  // geo for the report: ip-api first, else offline mmdb
+  const geo = online
+    ? { country: online.country, city: online.city, latitude: online.latitude, longitude: online.longitude, source: 'ip-api.com' }
+    : hasGeoip ? await geoipLookup(originHop.from_ip!) : null;
 
   if (!ev.length) {
     const detail: Record<string, unknown> = {

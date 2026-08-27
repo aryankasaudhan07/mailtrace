@@ -6,6 +6,7 @@ import { analyze } from './m5_network';
 
 beforeAll(() => {
   process.env.INTEL_DIR = join(process.cwd(), 'test/fixtures/intel');
+  process.env.GEO_DISABLE_ONLINE = '1'; // offline: use only fixture intel, no ip-api
 });
 
 // single hop received by the trusted fixture MX -> boundary = that hop
