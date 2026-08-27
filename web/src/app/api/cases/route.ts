@@ -3,6 +3,8 @@ import { json, guard } from '@/lib/http';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// analysis runs six lanes (some do DNS/RDAP); give it headroom on Vercel.
+export const maxDuration = 60;
 
 export async function GET(req: Request) {
   return guard(async () => {

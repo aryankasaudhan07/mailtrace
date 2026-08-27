@@ -1,0 +1,18 @@
+.hist-bar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; flex-wrap: wrap; }
+.search { display: flex; align-items: center; gap: 9px; background: var(--card-2); border: 1px solid var(--line-2);
+  border-radius: 10px; padding: 0 13px; color: var(--text-3); min-width: 280px; flex: 1; max-width: 420px; }
+.search input { flex: 1; background: none; border: none; outline: none; color: var(--text); font-size: .9rem; padding: 11px 0; }
+.filters { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { background: var(--card-2); border: 1px solid var(--line); color: var(--text-2); font-size: .82rem;
+  font-weight: 550; padding: 8px 14px; border-radius: 8px; }
+.chip:hover { color: var(--text); }
+.chip.on { background: var(--violet-dim); border-color: var(--violet); color: var(--violet); }
+
+.hist-table { table-layout: auto; }
+.hcell { display: flex; align-items: center; gap: 11px; }
+.hicon { width: 34px; height: 34px; border-radius: 9px; background: rgba(57, 101, 255, 0.12); color: var(--info); display: grid; place-items: center; flex-shrink: 0; }
+.hicon.crit { background: var(--crit-bg); color: var(--crit); }
+.hicon.high { background: var(--high-bg); color: var(--high); }
+.hicon.med { background: var(--med-bg); color: var(--med); }
+.hicon.benign { background: var(--low-bg); color: var(--low); }
+.hsubj { font-weight: 600; max-width: 340px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }

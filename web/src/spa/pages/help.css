@@ -1,0 +1,23 @@
+.help-grid { display: grid; grid-template-columns: 1.3fr 1fr; gap: 20px; align-items: start; }
+.help-hero { display: flex; align-items: center; gap: 16px; }
+.help-hero .btn { margin-left: auto; white-space: nowrap; }
+.help-ic { width: 46px; height: 46px; border-radius: 12px; background: var(--violet-dim); color: var(--violet); display: grid; place-items: center; flex-shrink: 0; }
+
+.faq { border-bottom: 1px solid var(--line); }
+.faq:last-child { border-bottom: none; }
+.faq-q { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  background: none; border: none; color: var(--text); font-size: .92rem; font-weight: 600; text-align: left; padding: 15px 2px; }
+.faq-chev { color: var(--text-3); transition: transform .15s; flex-shrink: 0; }
+.faq.open .faq-chev { transform: rotate(180deg); }
+.faq-a { padding: 0 2px 15px; font-size: .87rem; line-height: 1.6; }
+
+.an-help { display: flex; flex-direction: column; gap: 3px; }
+.an-help-row { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.an-help-row:last-child { border-bottom: none; }
+.an-badge { width: 34px; height: 26px; border-radius: 7px; background: var(--violet-dim); color: var(--violet);
+  display: grid; place-items: center; font-weight: 700; font-size: .78rem; flex-shrink: 0; }
+
+.help-support { text-align: left; }
+.help-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+
+@media (max-width: 1000px) { .help-grid { grid-template-columns: 1fr; } }
