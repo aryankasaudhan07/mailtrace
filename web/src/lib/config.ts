@@ -25,4 +25,8 @@ export const config = {
   fixtureMode(): boolean {
     return (process.env.FIXTURE_MODE ?? '1') !== '0';
   },
+  /** Offline intel directory (GeoLite2 mmdb, Tor/VPN/datacenter lists). */
+  intelDir(): string {
+    return process.env.INTEL_DIR ?? `${process.cwd()}/../intel`;
+  },
 };
