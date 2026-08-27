@@ -13,7 +13,19 @@
 .rep-body { flex: 1; min-width: 0; }
 .rep-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .btn.sm { padding: 8px 12px; font-size: .8rem; }
+/* transparent on desktop so the two buttons stay inline in the row */
+.rep-actions { display: contents; }
 
 @media (max-width: 1100px) { .rep-cards { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 720px) { .rep-row { flex-wrap: wrap; } }
 @media (max-width: 560px) { .rep-cards { grid-template-columns: 1fr; } }
+
+/* phone / small tablet: stack each report row — icon+title+badge on top,
+   the two action buttons on their own full-width line */
+@media (max-width: 760px) {
+  .rep-row { flex-wrap: wrap; row-gap: 12px; align-items: center; }
+  .rep-body { flex: 1 1 0; }
+  .rep-title { white-space: normal; }
+  .rep-row .badge { flex-shrink: 0; }
+  .rep-actions { display: flex; flex: 1 1 100%; gap: 10px; }
+  .rep-actions .btn.sm { flex: 1; }
+}
