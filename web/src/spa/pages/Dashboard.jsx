@@ -45,7 +45,6 @@ export default function Dashboard() {
   const typeTotal = s.threat_types.reduce((a, [, n]) => a + n, 0) || 1
 
   const stats = [
-    { icon: Mail, tone: 'info', label: 'Total Analyses', n: s.total },
     { icon: ShieldAlert, tone: 'crit', label: 'Critical', n: crit },
     { icon: AlertTriangle, tone: 'high', label: 'High Risk', n: high },
     { icon: AlertTriangle, tone: 'med', label: 'Suspicious', n: med },
