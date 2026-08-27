@@ -17,5 +17,7 @@ export async function GET() {
     analyzers_registered: [...registry().keys()].sort(),
     email_configured: emailConfigured,
     email_transport: emailConfigured ? 'brevo' : 'none',
+    // non-secret diagnostic: the MX hosts the trust boundary treats as our infra
+    trusted_hosts: [...config.trustedHosts()],
   });
 }

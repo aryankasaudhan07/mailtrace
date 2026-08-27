@@ -4,7 +4,7 @@
  * the exact JSON shapes the frontend already consumes.
  */
 
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { runAll } from './analyzers/index';
 import { parseHops, resolveTrustBoundary } from './analyzers/m2_headers';
 import { config } from './config';
@@ -13,7 +13,7 @@ import { scoreCase } from './scoring/engine';
 import type { Evidence } from './schemas/evidence';
 import type { Attachment, ExtractedUrl, Hop, ParsedEmail } from './schemas/email';
 import type { Verdict } from './schemas/verdict';
-import { getCase, listCases, saveCase, type StoredCase } from './store';
+import { caseIdBySha, getCase, indexSha, listCases, saveCase, type StoredCase } from './store';
 
 export interface CaseRecord extends StoredCase {
   filename: string | null;
@@ -65,6 +65,19 @@ function toRecord(caseId: string, email: ParsedEmail, hops: Hop[], evidence: Evi
 
 /** Analyze a raw email, persist the case, and return the POST /api/cases body. */
 export async function analyzeAndStore(raw: Buffer, filename: string | null): Promise<{ case_id: string; filename: string | null; sha256: string; verdict: Verdict }> {
+  // Idempotency: identical bytes -> the same case/verdict every time. This makes
+  // re-analysis deterministic and stops a file from self-correlating as a
+  // campaign with its own prior uploads (and freezes any network-lane wobble).
+  const sha = createHash('sha256').update(raw).digest('hex');
+  const existingId = await caseIdBySha(sha);
+  if (existingId) {
+    const prior = await getCase(existingId);
+    if (prior) {
+      const r = prior as CaseRecord;
+      return { case_id: r.case_id, filename: r.filename, sha256: sha, verdict: r.verdict };
+    }
+  }
+
   const caseId = randomUUID();
   const email = await parseEmail(raw);
   const evidence = await runAll(caseId, email);
@@ -74,6 +87,7 @@ export async function analyzeAndStore(raw: Buffer, filename: string | null): Pro
   resolveTrustBoundary(hops, config.trustedHosts(), config.trustedCidrs());
 
   await saveCase(toRecord(caseId, email, hops, evidence, verdict, filename));
+  await indexSha(sha, caseId);
   return { case_id: caseId, filename, sha256: email.sha256, verdict };
 }
 

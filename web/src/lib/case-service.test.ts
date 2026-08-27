@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { __resetStore } from './store';
 import {
-  analyzeAndStore, getCase, caseDetail, caseTrace, caseEvidence, caseArtifacts, caseListItem, buildStats,
+  analyzeAndStore, getCase, caseDetail, caseTrace, caseEvidence, caseArtifacts, caseListItem, buildStats, listCases,
 } from './case-service';
 
 const bec = () => readFileSync(join(process.cwd(), 'test/fixtures/bec.eml'));
@@ -39,6 +39,19 @@ describe('case-service pipeline', () => {
 
     const item = caseListItem(rec!);
     expect(item.score).toBe(res.verdict.score);
+  }, 20000);
+
+  it('is idempotent: same bytes -> same case, same verdict, no self-correlation', async () => {
+    const raw = bec();
+    const a = await analyzeAndStore(raw, 'bec.eml');
+    const b = await analyzeAndStore(raw, 'bec.eml');
+    expect(b.case_id).toBe(a.case_id); // replayed, not re-created
+    expect(b.verdict.score).toBe(a.verdict.score); // deterministic
+    // a re-upload must not add a second case or fire campaign reuse against itself
+    const list = await listCases(50);
+    expect(list.length).toBe(1);
+    const reuse = a.verdict.contributions.find((c) => c.signal === 'campaign_infrastructure_reuse');
+    expect(reuse).toBeUndefined();
   }, 20000);
 
   it('buildStats aggregates stored cases', async () => {

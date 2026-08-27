@@ -19,12 +19,34 @@ function useKv(): boolean {
 const memIndicators = new Map<string, Set<string>>();
 const memCases = new Map<string, StoredCase>();
 const memOrder: string[] = []; // case ids, newest last
+const memSha = new Map<string, string>(); // sha256 -> case id (idempotency)
 
 /** Test/dev helper: clear the in-memory index and cases. */
 export function __resetStore(): void {
   memIndicators.clear();
   memCases.clear();
   memOrder.length = 0;
+  memSha.clear();
+}
+
+// ---- content-hash idempotency ----------------------------------------------
+// Analyzing the same bytes must yield the same case/verdict every time (and must
+// not self-correlate as a campaign with its own prior uploads).
+export async function caseIdBySha(sha: string): Promise<string | null> {
+  if (useKv()) {
+    const { kv } = await import('@vercel/kv');
+    return ((await kv.get(`sha:${sha}`)) as string | null) ?? null;
+  }
+  return memSha.get(sha) ?? null;
+}
+
+export async function indexSha(sha: string, caseId: string): Promise<void> {
+  if (useKv()) {
+    const { kv } = await import('@vercel/kv');
+    await kv.set(`sha:${sha}`, caseId);
+  } else {
+    memSha.set(sha, caseId);
+  }
 }
 
 // ---- case storage ----------------------------------------------------------
