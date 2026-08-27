@@ -45,13 +45,13 @@ function ipInRangeSet(ip: string, ranges: string[]): boolean {
   return ipInCidrs(ip, cidrs);
 }
 
-const checkTorExit = (ip: string) => new Set(loadLines('tor-exits.txt')).has(ip);
-const checkVpn = (ip: string) => ipInRangeSet(ip, loadLines('vpn-ipv4.txt'));
-const checkDatacenter = (ip: string) => ipInRangeSet(ip, loadLines('datacenter-ipv4.txt'));
+export const checkTorExit = (ip: string) => new Set(loadLines('tor-exits.txt')).has(ip);
+export const checkVpn = (ip: string) => ipInRangeSet(ip, loadLines('vpn-ipv4.txt'));
+export const checkDatacenter = (ip: string) => ipInRangeSet(ip, loadLines('datacenter-ipv4.txt'));
 
 let _reader: Reader<CityResponse> | null = null;
 let _readerTried = false;
-async function geoipLookup(ip: string): Promise<Record<string, unknown> | null> {
+export async function geoipLookup(ip: string): Promise<Record<string, unknown> | null> {
   const p = intel('GeoLite2-City.mmdb');
   if (!existsSync(p)) return null;
   try {

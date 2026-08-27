@@ -17,10 +17,51 @@ function useKv(): boolean {
 
 // ---- in-memory backend -----------------------------------------------------
 const memIndicators = new Map<string, Set<string>>();
+const memCases = new Map<string, StoredCase>();
+const memOrder: string[] = []; // case ids, newest last
 
-/** Test/dev helper: clear the in-memory index. */
+/** Test/dev helper: clear the in-memory index and cases. */
 export function __resetStore(): void {
   memIndicators.clear();
+  memCases.clear();
+  memOrder.length = 0;
+}
+
+// ---- case storage ----------------------------------------------------------
+// Opaque to the store; the case-service owns the shape. Must be JSON-serializable
+// (no Buffers) so it round-trips through KV.
+export type StoredCase = Record<string, unknown> & { case_id: string; analyzed_at: string };
+
+const CASE_KEY = (id: string) => `case:${id}`;
+const CASE_LIST = 'cases:index'; // KV sorted set / list of ids
+
+export async function saveCase(rec: StoredCase): Promise<void> {
+  if (useKv()) {
+    const { kv } = await import('@vercel/kv');
+    await kv.set(CASE_KEY(rec.case_id), rec);
+    await kv.lpush(CASE_LIST, rec.case_id);
+  } else {
+    memCases.set(rec.case_id, rec);
+    memOrder.push(rec.case_id);
+  }
+}
+
+export async function getCase(id: string): Promise<StoredCase | null> {
+  if (useKv()) {
+    const { kv } = await import('@vercel/kv');
+    return (await kv.get<StoredCase>(CASE_KEY(id))) ?? null;
+  }
+  return memCases.get(id) ?? null;
+}
+
+export async function listCases(limit = 200): Promise<StoredCase[]> {
+  if (useKv()) {
+    const { kv } = await import('@vercel/kv');
+    const ids = (await kv.lrange<string>(CASE_LIST, 0, limit - 1)) ?? [];
+    const recs = await Promise.all(ids.map((id) => kv.get<StoredCase>(CASE_KEY(id))));
+    return recs.filter((r): r is StoredCase => r !== null);
+  }
+  return [...memOrder].reverse().slice(0, limit).map((id) => memCases.get(id)!).filter(Boolean);
 }
 
 // ---- indicator index (M7) --------------------------------------------------
