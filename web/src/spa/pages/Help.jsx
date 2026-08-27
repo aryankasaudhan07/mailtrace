@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { LifeBuoy, Rocket, ChevronDown, Mail, BookOpen, MessageSquare } from 'lucide-react'
+import { Rocket, ChevronDown, BookOpen } from 'lucide-react'
 import PageHead from '../components/PageHead.jsx'
 import './help.css'
 
@@ -58,16 +58,6 @@ export default function Help() {
                   <div><div style={{ fontWeight: 600, fontSize: '.88rem' }}>{t}</div><div className="muted" style={{ fontSize: '.8rem' }}>{d}</div></div>
                 </div>
               ))}
-            </div>
-          </div>
-
-          <div className="card help-support" style={{ marginTop: 20 }}>
-            <div className="help-ic"><LifeBuoy size={22} /></div>
-            <div className="card-title" style={{ margin: '10px 0 4px' }}>Need more help?</div>
-            <div className="muted" style={{ fontSize: '.86rem' }}>Reach the security team for onboarding, integrations or incident support.</div>
-            <div className="help-actions">
-              <a className="btn ghost" href="mailto:support@mailtrace.io"><Mail size={15} /> Email support</a>
-              <button className="btn"><MessageSquare size={15} /> Open a ticket</button>
             </div>
           </div>
         </div>
