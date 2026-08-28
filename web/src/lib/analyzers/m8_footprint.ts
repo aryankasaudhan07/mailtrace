@@ -142,6 +142,41 @@ async function checkHIBP(email: string): Promise<BreachInfo | null> {
   }
 }
 
+/**
+ * XposedOrNot breach lookup -- a FREE, keyless public breach API (a HIBP
+ * alternative). breach-analytics returns per-breach `xposed_date` years, giving
+ * both the breach list and an earliest-year age floor. Degrades to null.
+ */
+async function checkXposedOrNot(email: string): Promise<BreachInfo | null> {
+  try {
+    const r = await fetch(`https://api.xposedornot.com/v1/breach-analytics?email=${encodeURIComponent(email)}`, {
+      signal: timeoutSignal(6000), headers: { 'user-agent': 'Mailtrace-Footprint/1.0' },
+    });
+    if (r.status === 404) return { count: 0, breaches: [], earliest: null, latest: null, simulated: false };
+    if (!r.ok) return null;
+    const d = (await r.json()) as { ExposedBreaches?: { breaches_details?: Array<{ breach?: string; xposed_date?: string }> } };
+    const details = d?.ExposedBreaches?.breaches_details;
+    if (!Array.isArray(details) || details.length === 0) {
+      return { count: 0, breaches: [], earliest: null, latest: null, simulated: false };
+    }
+    const thisYear = new Date().getUTCFullYear();
+    const years = details
+      .map((b) => Number(String(b.xposed_date ?? '').match(/\d{4}/)?.[0]))
+      .filter((y) => y > 1990 && y <= thisYear + 1)
+      .sort((a, b) => a - b);
+    const names = details.map((b) => b.breach).filter((n): n is string => !!n).slice(0, 12);
+    return {
+      count: details.length,
+      breaches: names,
+      earliest: years.length ? `${years[0]}-01-01` : null,
+      latest: years.length ? `${years[years.length - 1]}-01-01` : null,
+      simulated: false,
+    };
+  } catch {
+    return null;
+  }
+}
+
 // Real breach names, only used to make the labelled DEMO summary look plausible.
 const DEMO_BREACHES = ['Collection1', 'LinkedIn', 'Adobe', 'Canva', 'Dropbox', 'MyFitnessPal', 'Chegg', 'Twitter', 'Wattpad', 'Deezer', 'Ticketmaster'];
 
@@ -166,12 +201,13 @@ function simulatedBreach(email: string): BreachInfo {
 }
 
 /** Fold a BreachInfo into the report-friendly shape (adds age estimate). */
-function breachDetail(b: BreachInfo | null) {
+function breachDetail(b: BreachInfo | null, source: string | null) {
   if (!b) return { checked: false };
   const year = b.earliest ? Number(b.earliest.slice(0, 4)) : null;
   return {
     checked: true,
     simulated: b.simulated,
+    source, // 'hibp' | 'xposedornot' | 'demo'
     count: b.count,
     earliest: b.earliest,
     latest: b.latest,
@@ -254,16 +290,20 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
   let probedLive = false;
 
   let breach: BreachInfo | null = null;
+  let breachSource: string | null = null;
   if (online) {
     sources.push(await checkGravatar(addr));
     sources.push(await probeCatalog());
-    breach = await checkHIBP(addr); // real breach lookup when HIBP_API_KEY is set
+    // real breach lookup: HIBP when a key is set, otherwise the free XposedOrNot
+    breach = await checkHIBP(addr);
+    if (breach) breachSource = 'hibp';
+    if (!breach) { breach = await checkXposedOrNot(addr); if (breach) breachSource = 'xposedornot'; }
     probedLive = true;
   }
-  if (demo) {
-    sources.push(simulatedFootprint(addr));
-    if (!breach) breach = simulatedBreach(addr);
-  }
+  if (demo) sources.push(simulatedFootprint(addr));
+  // fill the breach/age with the labelled demo summary when a real lookup found
+  // nothing (e.g. synthetic sample addresses), so the demo stays illustrative
+  if (demo && (!breach || breach.count === 0)) { breach = simulatedBreach(addr); breachSource = 'demo'; }
 
   const all = merge(...sources);
   const registered = all.filter((h) => h.status === 'registered');
@@ -285,8 +325,8 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
     platforms: registered.map((h) => h.platform),
     probed_live: probedLive,
     includes_simulated: registered.some((h) => h.simulated),
-    breach: breachDetail(breach),
-    sources: { gravatar: online, live_probe: online, hibp: online && !!config.hibpKey(), simulated_dataset: demo },
+    breach: breachDetail(breach, breachSource),
+    sources: { gravatar: online, live_probe: online, breach: breachSource, simulated_dataset: demo },
   };
 
   if (registered.length > 0) {

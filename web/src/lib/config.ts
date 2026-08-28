@@ -64,10 +64,10 @@ export const config = {
     return this.fixtureMode();
   },
   /**
-   * HaveIBeenPwned API key. When set, M8 does a real breach lookup for the
-   * sender address (breach count + earliest breach date -> a "in use since ≥ Y"
-   * age floor). Without it, M8 falls back to the labelled simulated summary in
-   * demo mode. HIBP requires a key (paid tier) since 2019.
+   * Optional HaveIBeenPwned API key. When set, M8 prefers HIBP for the breach
+   * lookup; otherwise it uses the FREE, keyless XposedOrNot API by default, and
+   * falls back to the labelled simulated summary in demo mode. HIBP needs a paid
+   * key (since 2019); XposedOrNot needs none.
    */
   hibpKey(): string {
     return process.env.HIBP_API_KEY ?? '';
