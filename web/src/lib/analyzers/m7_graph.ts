@@ -75,6 +75,7 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
     }
 
     const related = await findRelatedCases(indicators); // query BEFORE storing self
+    delete related[caseId]; // a case never correlates with its own prior indicators (safe re-analysis)
     const counts = Object.values(related);
     const ev: Evidence[] = [];
 

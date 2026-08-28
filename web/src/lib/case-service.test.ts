@@ -1,9 +1,10 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { __resetStore } from './store';
+import { __resetStore, saveCase } from './store';
 import {
   analyzeAndStore, getCase, caseDetail, caseTrace, caseEvidence, caseArtifacts, caseListItem, buildStats, listCases,
+  type CaseRecord,
 } from './case-service';
 
 const bec = () => readFileSync(join(process.cwd(), 'test/fixtures/bec.eml'));
@@ -55,6 +56,21 @@ describe('case-service pipeline', () => {
     expect(list.length).toBe(1);
     const reuse = a.verdict.contributions.find((c) => c.signal === 'campaign_infrastructure_reuse');
     expect(reuse).toBeUndefined();
+  }, 20000);
+
+  it('re-analyzes in place when the cached verdict is from an older scorer version', async () => {
+    const raw = bec();
+    const a = await analyzeAndStore(raw, 'bec.eml');
+    // doctor the stored case so it looks scored by an older ruleset
+    const stored = (await getCase(a.case_id)) as unknown as CaseRecord;
+    stored.verdict = { ...stored.verdict, scorer_version: '0.0.1', score: 999 };
+    await saveCase(stored);
+    const b = await analyzeAndStore(raw, 'bec.eml');
+    expect(b.case_id).toBe(a.case_id); // re-analyzed in place, same id
+    expect(b.verdict.scorer_version).not.toBe('0.0.1'); // re-scored with current rules
+    expect(b.verdict.score).toBe(a.verdict.score); // real score, not the doctored 999
+    const list = await listCases(50);
+    expect(list.length).toBe(1); // no duplicate History entry
   }, 20000);
 
   it('buildStats aggregates stored cases', async () => {

@@ -10,7 +10,7 @@ import { parseHops, resolveTrustBoundary } from './analyzers/m2_headers';
 import { isPublicIp } from './analyzers/ip';
 import { config } from './config';
 import { parseEmail } from './ingest/parser';
-import { scoreCase } from './scoring/engine';
+import { loadRules, scoreCase } from './scoring/engine';
 import type { Evidence } from './schemas/evidence';
 import type { Attachment, ExtractedUrl, Hop, ParsedEmail } from './schemas/email';
 import type { Verdict } from './schemas/verdict';
@@ -70,16 +70,24 @@ export async function analyzeAndStore(raw: Buffer, filename: string | null): Pro
   // re-analysis deterministic and stops a file from self-correlating as a
   // campaign with its own prior uploads (and freezes any network-lane wobble).
   const sha = createHash('sha256').update(raw).digest('hex');
+  const currentVersion = loadRules().version;
+  let caseId: string = randomUUID();
   const existingId = await caseIdBySha(sha);
   if (existingId) {
     const prior = await getCase(existingId);
     if (prior) {
       const r = prior as CaseRecord;
-      return { case_id: r.case_id, filename: r.filename, sha256: sha, verdict: r.verdict };
+      // Return the cache only when it was scored by the CURRENT rules. A version
+      // mismatch (e.g. a case stored before a new analyzer/weight shipped) is
+      // stale, so re-analyze it in place -- reusing the same case_id keeps links
+      // stable and avoids a duplicate History entry.
+      if (r.verdict.scorer_version === currentVersion) {
+        return { case_id: r.case_id, filename: r.filename, sha256: sha, verdict: r.verdict };
+      }
+      caseId = existingId;
     }
   }
 
-  const caseId = randomUUID();
   const email = await parseEmail(raw);
   const evidence = await runAll(caseId, email);
   const verdict = scoreCase(caseId, evidence);

@@ -61,10 +61,14 @@ export async function saveCase(rec: StoredCase): Promise<void> {
   if (useKv()) {
     const { kv } = await import('@vercel/kv');
     await kv.set(CASE_KEY(rec.case_id), rec);
+    // Overwriting an existing case (re-analysis) must not add a second list
+    // entry -- drop any prior occurrence before pushing.
+    await kv.lrem(CASE_LIST, 0, rec.case_id);
     await kv.lpush(CASE_LIST, rec.case_id);
   } else {
+    const isNew = !memCases.has(rec.case_id);
     memCases.set(rec.case_id, rec);
-    memOrder.push(rec.case_id);
+    if (isNew) memOrder.push(rec.case_id);
   }
 }
 
