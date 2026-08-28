@@ -10,6 +10,7 @@ import Geolocation from './pages/Geolocation.jsx'
 import HistoryPage from './pages/History.jsx'
 import Reports from './pages/Reports.jsx'
 import ThreatIntel from './pages/ThreatIntel.jsx'
+import Graph from './pages/Graph.jsx'
 import Settings from './pages/Settings.jsx'
 import Help from './pages/Help.jsx'
 
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/history" element={<HistoryPage />} />
           <Route path="/reports" element={<Reports />} />
           <Route path="/threat-intel" element={<ThreatIntel />} />
+          <Route path="/graph" element={<Graph />} />
           <Route path="/geolocation" element={<Geolocation />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/help" element={<Help />} />

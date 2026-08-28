@@ -109,6 +109,30 @@ export async function findRelatedCases(indicators: Indicators): Promise<Record<s
   return related;
 }
 
+/** Every stored indicator as flat edges: {case_id, kind, value}. Powers the graph. */
+export async function allIndicators(): Promise<Array<{ case_id: string; kind: string; value: string }>> {
+  const out: Array<{ case_id: string; kind: string; value: string }> = [];
+  const split = (key: string) => {
+    const i = key.indexOf(':');
+    return { kind: key.slice(0, i), value: key.slice(i + 1) };
+  };
+  if (useKv()) {
+    const { kv } = await import('@vercel/kv');
+    const keys = (await kv.keys('ind:*')) ?? [];
+    for (const full of keys) {
+      const { kind, value } = split(full.slice('ind:'.length));
+      const members = ((await kv.smembers(full)) as string[] | null) ?? [];
+      for (const cid of members) out.push({ case_id: cid, kind, value });
+    }
+  } else {
+    for (const [key, set] of memIndicators) {
+      const { kind, value } = split(key);
+      for (const cid of set) out.push({ case_id: cid, kind, value });
+    }
+  }
+  return out;
+}
+
 /** Record this case's indicators for future correlation. */
 export async function storeIndicators(caseId: string, indicators: Indicators): Promise<void> {
   const kv = useKv() ? (await import('@vercel/kv')).kv : null;

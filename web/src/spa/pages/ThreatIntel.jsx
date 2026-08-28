@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Network, Fingerprint, Share2, GitBranch, Globe, Link2, Server, Hash, ExternalLink } from 'lucide-react'
 import PageHead from '../components/PageHead.jsx'
 import { api } from '../api.js'
@@ -35,7 +36,7 @@ export default function ThreatIntel() {
   return (
     <div>
       <PageHead title="Threat Intelligence" subtitle="Campaign correlation and shared indicators of compromise"
-        actions={<a className="btn ghost" href="/live" target="_blank" rel="noreferrer"><ExternalLink size={15} /> Live Graph</a>} />
+        actions={<Link className="btn ghost" to="/graph"><ExternalLink size={15} /> Live Graph</Link>} />
 
       <div className="ti-cards">
         {cards.map(({ icon: Icon, tone, label, n }) => (

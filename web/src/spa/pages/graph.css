@@ -1,0 +1,6 @@
+.graph-stub { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 14px; min-height: 380px; }
+.graph-ic { width: 68px; height: 68px; border-radius: 18px; background: var(--violet-dim);
+  color: var(--violet); display: grid; place-items: center; }
+.graph-stub-title { font-size: 1.15rem; font-weight: 700; color: var(--text); }
+.graph-stub-text { max-width: 460px; line-height: 1.6; font-size: .9rem; }

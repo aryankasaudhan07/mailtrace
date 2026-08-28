@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom'
 import {
-  LayoutGrid, MailSearch, History, FileText, ShieldAlert,
+  LayoutGrid, MailSearch, History, FileText, ShieldAlert, Share2,
   MapPin, Settings, HelpCircle, LogOut, ShieldCheck, Mail, Menu, X,
 } from 'lucide-react'
 import { useAuth } from '../auth.jsx'
@@ -13,9 +13,10 @@ const NAV = [
   { to: '/history', label: 'History', icon: History },
   { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/threat-intel', label: 'Threat Intelligence', icon: ShieldAlert },
+  { to: '/graph', label: 'Graph', icon: Share2 },
   { to: '/geolocation', label: 'Geolocation', icon: MapPin },
   { to: '/settings', label: 'Settings', icon: Settings },
-  { to: '/help', label: 'Help & Support', icon: HelpCircle },
+  { to: '/help', label: 'Help', icon: HelpCircle },
 ]
 
 export default function Layout() {

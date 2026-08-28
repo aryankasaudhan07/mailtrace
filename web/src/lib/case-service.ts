@@ -14,7 +14,7 @@ import { loadRules, scoreCase } from './scoring/engine';
 import type { Evidence } from './schemas/evidence';
 import type { Attachment, ExtractedUrl, Hop, ParsedEmail } from './schemas/email';
 import type { Verdict } from './schemas/verdict';
-import { caseIdBySha, getCase, indexSha, listCases, saveCase, type StoredCase } from './store';
+import { allIndicators, caseIdBySha, getCase, indexSha, listCases, saveCase, type StoredCase } from './store';
 
 export interface CaseRecord extends StoredCase {
   filename: string | null;
@@ -264,6 +264,103 @@ export async function buildStats() {
 
   const threat_types = Object.entries(types).sort((a, b) => b[1] - a[1]);
   return { total, buckets, bands, threat_types, trend, recent };
+}
+
+// ---- graph / campaign correlation (ported from app/api/cases.py graph routes
+//      + app/graph/relationships.py) --------------------------------------------
+
+/** Case <-> indicator graph for the Threat Intelligence dashboard. */
+export async function caseGraph() {
+  const cases = (await listCases(1000)).map((c) => {
+    const r = rec(c);
+    return {
+      case_id: r.case_id,
+      score: r.verdict.score,
+      band: r.verdict.band,
+      confidence: r.verdict.confidence,
+      subject: r.subject,
+      from_addr: r.from_addr,
+    };
+  });
+  const edges = await allIndicators();
+  return { cases, edges };
+}
+
+// Relationship strength by indicator kind (mirrors relationships.py).
+const IND_WEIGHT: Record<string, number> = { ip: 0.8, urlreg: 0.5, url: 0.4, hash: 0.3 };
+
+/** Campaign clusters: connected components of cases sharing infrastructure. */
+export async function campaignClusters() {
+  const edges = await allIndicators();
+
+  // case -> set of "kind:value" indicators
+  const indForCase = new Map<string, Set<string>>();
+  // "kind:value" -> set of case ids
+  const casesForInd = new Map<string, Set<string>>();
+  for (const e of edges) {
+    const key = `${e.kind}:${e.value}`;
+    (indForCase.get(e.case_id) ?? indForCase.set(e.case_id, new Set()).get(e.case_id)!).add(key);
+    (casesForInd.get(key) ?? casesForInd.set(key, new Set()).get(key)!).add(e.case_id);
+  }
+
+  // adjacency: two cases are linked if they share any indicator
+  const adj = new Map<string, Set<string>>();
+  for (const cids of casesForInd.values()) {
+    if (cids.size < 2) continue;
+    const arr = [...cids];
+    for (const a of arr) {
+      const set = adj.get(a) ?? adj.set(a, new Set()).get(a)!;
+      for (const b of arr) if (a !== b) set.add(b);
+    }
+  }
+
+  const kindOf = (ind: string) => ind.slice(0, ind.indexOf(':'));
+  const valOf = (ind: string) => ind.slice(ind.indexOf(':') + 1);
+
+  const visited = new Set<string>();
+  const clusters: Array<{ cluster_id: string; size: number; cases: string[]; core_indicators: Record<string, string[]>; cohesion_score: string }> = [];
+  let cid = 0;
+
+  for (const start of adj.keys()) {
+    if (visited.has(start)) continue;
+    // BFS connected component
+    const comp: string[] = [];
+    const queue = [start];
+    visited.add(start);
+    while (queue.length) {
+      const cur = queue.shift()!;
+      comp.push(cur);
+      for (const nb of adj.get(cur) ?? []) if (!visited.has(nb)) { visited.add(nb); queue.push(nb); }
+    }
+    if (comp.length < 2) continue;
+
+    // core indicators = union across the cluster
+    const core: Record<string, Set<string>> = {};
+    for (const c of comp) for (const ind of indForCase.get(c) ?? []) {
+      (core[kindOf(ind)] ??= new Set()).add(valOf(ind));
+    }
+    // cohesion = mean pairwise shared-indicator strength
+    let strengthSum = 0, pairs = 0;
+    for (let i = 0; i < comp.length; i++) for (let j = i + 1; j < comp.length; j++) {
+      const A = indForCase.get(comp[i]) ?? new Set<string>();
+      const B = indForCase.get(comp[j]) ?? new Set<string>();
+      const shared = [...A].filter((x) => B.has(x));
+      if (shared.length) {
+        strengthSum += Math.min(1, shared.reduce((s, ind) => s + (IND_WEIGHT[kindOf(ind)] ?? 0.1), 0) / 2);
+        pairs += 1;
+      }
+    }
+    const cohesion = pairs ? strengthSum / pairs : 0;
+    clusters.push({
+      cluster_id: `campaign_${cid++}`,
+      size: comp.length,
+      cases: comp.sort(),
+      core_indicators: Object.fromEntries(Object.entries(core).map(([k, v]) => [k, [...v]])),
+      cohesion_score: cohesion.toFixed(2),
+    });
+  }
+  clusters.sort((a, b) => b.size - a.size);
+  return { cluster_count: clusters.length, clusters };
 }
 
 export { getCase, listCases };

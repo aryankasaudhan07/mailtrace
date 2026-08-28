@@ -17,7 +17,7 @@ export default function Help() {
   const [open, setOpen] = useState(0)
   return (
     <div>
-      <PageHead title="Help & Support" subtitle="Guides, answers and how the platform works" />
+      <PageHead title="Help" subtitle="Guides, answers and how the platform works" />
 
       <div className="help-grid">
         <div>
