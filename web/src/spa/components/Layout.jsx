@@ -38,7 +38,7 @@ export default function Layout() {
       <header className="mobilebar">
         <button className="hamb" onClick={() => setOpen(true)} aria-label="Open menu"><Menu size={22} /></button>
         <div className="brand-badge sm"><Mail size={17} /></div>
-        <span className="mobilebar-title">Email Threat Intelligence</span>
+        <span className="mobilebar-title">Mailtrace</span>
       </header>
 
       {open && <div className="scrim" onClick={() => setOpen(false)} />}
@@ -46,7 +46,7 @@ export default function Layout() {
       <aside className={'sidebar' + (open ? ' open' : '')}>
         <div className="brand">
           <div className="brand-badge"><Mail size={20} /></div>
-          <div className="brand-text">Email Threat<br />Intelligence</div>
+          <div className="brand-text">Mailtrace</div>
           <button className="drawer-close" onClick={() => setOpen(false)} aria-label="Close menu"><X size={20} /></button>
         </div>
 

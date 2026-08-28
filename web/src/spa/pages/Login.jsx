@@ -29,7 +29,7 @@ export default function Login() {
   const title = mode === 'login' ? 'Welcome Back'
     : mode === 'register' ? (step === 'request' ? 'Create Account' : 'Verify your email')
     : step === 'request' ? 'Reset Password' : 'Enter reset code'
-  const sub = mode === 'login' ? 'Sign in to your Email Threat Intelligence Platform'
+  const sub = mode === 'login' ? 'Sign in to your Mailtrace account'
     : mode === 'register' ? (step === 'request'
         ? 'Set up your analyst account to get started'
         : `Enter the 6-digit code sent to ${form.email}`)
@@ -75,7 +75,7 @@ export default function Login() {
   return (
     <div className="login">
       <header className="login-top">
-        <div className="brand"><div className="brand-badge"><Mail size={18} /></div><b>Email Threat Intelligence</b></div>
+        <div className="brand"><div className="brand-badge"><Mail size={18} /></div><b>Mailtrace</b></div>
         <div className="login-top-right">
           <span className="online"><i /> System Online</span>
           <span className="dim"><Clock size={13} /> {new Date().toLocaleString()}</span>
