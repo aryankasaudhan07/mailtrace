@@ -52,6 +52,12 @@ describe('M8 sender email footprint', () => {
     expect(pa).toEqual(pb);
   });
 
+  it('does NOT grant a legitimacy credit for simulated / demo data', async () => {
+    // demo mode, no live evidence -> only simulated footprint/breach -> no credit
+    const ev = await analyze(CID, email('alice@gmail.com'));
+    expect(ev.some((e) => ['established_sender_identity', 'known_footprint_sender'].includes(e.signal))).toBe(false);
+  });
+
   it('returns UNAVAILABLE when offline and the demo dataset is disabled', async () => {
     process.env.M8_DEMO = '0';
     const ev = await analyze(CID, email('alice@gmail.com'));

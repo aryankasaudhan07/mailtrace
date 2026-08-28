@@ -10,7 +10,7 @@
 #
 # Owner: Track E
 
-version: "1.4.2"
+version: "1.5.0"
 
 bands:
   benign: [0, 24]
@@ -43,6 +43,28 @@ suppress_negatives_when_any_triggered:
   - payment_diversion_intent
   - credential_harvest_intent
   - executive_impersonation
+
+# M8 legitimacy credits (below) are negative signals that get their OWN, narrower
+# suppressor set. Rationale: an aged, widely-registered sender address is strong
+# evidence of a genuine sender -- attackers use fresh throwaways, not 5-year-old
+# addresses registered on 20 platforms. That evidence should outweigh content-only
+# flags ("urgent" wording, the credential heuristic). It stops meaning anything
+# only when the message proves the sender is FORGED or is DIVERTING money -- so
+# only sender-forgery / auth-failure / money-diversion signals cancel the credit,
+# NOT content heuristics.
+identity_credits:
+  - established_sender_identity
+  - known_footprint_sender
+identity_credit_suppressors:
+  - spf_fail_hard
+  - dmarc_fail_strict
+  - dkim_fail
+  - forged_received_hop
+  - private_ip_in_public_chain
+  - timestamp_regression
+  - brand_lookalike_domain
+  - reply_to_domain_mismatch
+  - payment_diversion_intent
 
 signals:
 
@@ -293,3 +315,24 @@ signals:
       Informational only, weight 0 by design. A privacy-conscious or corporate
       address legitimately shows no public footprint, so absence is never treated
       as malicious -- it is context for the analyst, not a score.
+
+  established_sender_identity:
+    weight: -28
+    analyzer: M8
+    label: "Established sender identity (aged + widely registered)"
+    rationale: >
+      Real evidence (Gravatar / breach history, NOT the demo dataset) that the
+      sender address is registered on 3+ platforms AND has been in use for 2+ years.
+      Attackers use fresh throwaway addresses, not long-lived widely-registered ones,
+      so this is strong legitimacy evidence -- large credit. In identity_credits:
+      suppressed only by sender-forgery / auth-failure / money-diversion signals, so
+      a spoofed or BEC message never earns it.
+
+  known_footprint_sender:
+    weight: -12
+    analyzer: M8
+    label: "Sender address has real footprint or age"
+    rationale: >
+      Partial legitimacy evidence -- the sender address has a real platform footprint
+      OR a 2+ year age floor, but not both. Smaller credit than a fully established
+      identity. Same forgery/diversion-only suppression as established_sender_identity.

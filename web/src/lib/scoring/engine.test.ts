@@ -79,6 +79,25 @@ describe('scoring engine parity', () => {
     expect(v.score).toBe(30);
   });
 
+  it('M8 identity credit survives a content flag but is cancelled by sender forgery', () => {
+    // established identity (-28) + a content heuristic (+14): content does NOT
+    // suppress the identity credit, so the credit wins -> clamps to 0 (CLEAN).
+    const legit = scoreCase(cid, [
+      triggered(cid, Analyzer.M4_CONTENT, 'credential_harvest_intent'),
+      triggered(cid, Analyzer.M8_FOOTPRINT, 'established_sender_identity'),
+    ]);
+    expect(legit.score).toBe(0);
+    expect(legit.band).toBe(Band.BENIGN);
+
+    // established identity (-28) + spoofing: the credit IS suppressed, so the
+    // positive spoofing signal scores and the message is NOT whitewashed.
+    const spoofed = scoreCase(cid, [
+      triggered(cid, Analyzer.M3_AUTH, 'spf_fail_hard'),
+      triggered(cid, Analyzer.M8_FOOTPRINT, 'established_sender_identity'),
+    ]);
+    expect(spoofed.score).toBeGreaterThan(0);
+  });
+
   it('unknown signal is ignored, not fatal', () => {
     const v = scoreCase(cid, [triggered(cid, Analyzer.M2_HEADERS, 'signal_that_does_not_exist')]);
     expect(v.score).toBe(0);

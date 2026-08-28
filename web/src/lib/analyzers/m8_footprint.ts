@@ -337,6 +337,28 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
     out.push(clear(caseId, Analyzer.M8_FOOTPRINT, 'sender_no_footprint', detail));
   }
 
+  // ---- legitimacy credits (negative-weight; REAL evidence only) ----
+  // An aged, widely-registered address is strong evidence of a genuine sender.
+  // Simulated/demo data never earns credit — only real Gravatar/breach evidence.
+  const realBreach = breach && !breach.simulated ? breach : null;
+  const earliestYear = realBreach?.earliest ? Number(realBreach.earliest.slice(0, 4)) : null;
+  const ageYears = earliestYear ? Math.max(0, new Date().getUTCFullYear() - earliestYear) : null;
+  const establishedEvidence = realRegistered.length >= 3 || (!!realBreach && realBreach.count >= 5);
+  const aged = ageYears != null && ageYears >= 2;
+  if (establishedEvidence || aged) {
+    const creditDetail = {
+      email: addr,
+      real_platforms: realRegistered.length,
+      breach_count: realBreach?.count ?? 0,
+      in_use_since: earliestYear,
+      age_years: ageYears,
+      established: establishedEvidence && aged,
+      note: 'Aged / widely-registered real identity — attackers use fresh throwaways, not long-lived widely-registered addresses. Credit is cancelled if the message is forged or diverts money.',
+    };
+    const signal = establishedEvidence && aged ? 'established_sender_identity' : 'known_footprint_sender';
+    out.push(triggered(caseId, Analyzer.M8_FOOTPRINT, signal, creditDetail));
+  }
+
   return out;
 }
 

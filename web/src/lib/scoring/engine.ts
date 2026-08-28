@@ -25,6 +25,8 @@ interface WeightsDoc {
   signals: Record<string, SignalRule>;
   confidence_penalty_per_unavailable_lane?: number;
   suppress_negatives_when_any_triggered?: string[];
+  identity_credits?: string[];
+  identity_credit_suppressors?: string[];
 }
 
 export interface Rules {
@@ -32,6 +34,10 @@ export interface Rules {
   signals: Record<string, SignalRule>;
   unavailablePenalty: number;
   suppressors: Set<string>;
+  /** M8 legitimacy credits: negative signals that use their own suppressor set. */
+  identityCredits: Set<string>;
+  /** Only these (sender-forgery / money-diversion) signals cancel identity credits. */
+  identitySuppressors: Set<string>;
 }
 
 let _cached: Rules | null = null;
@@ -46,6 +52,8 @@ export function loadRules(): Rules {
     signals: doc.signals,
     unavailablePenalty: doc.confidence_penalty_per_unavailable_lane ?? 0.15,
     suppressors: new Set(doc.suppress_negatives_when_any_triggered ?? []),
+    identityCredits: new Set(doc.identity_credits ?? []),
+    identitySuppressors: new Set(doc.identity_credit_suppressors ?? []),
   };
   return _cached;
 }
@@ -75,6 +83,11 @@ export function scoreCase(caseId: string, evidence: Evidence[], rules: Rules = l
     evidence.filter((e) => e.status === Status.TRIGGERED).map((e) => e.signal),
   );
   const suppressing = [...triggeredSignals].filter((s) => rules.suppressors.has(s)).sort();
+  // Identity credits (established/aged sender) are cancelled only by sender-forgery
+  // / money-diversion signals, NOT by content heuristics: an aged, widely-registered
+  // address stays legit even if the body reads "urgent" -- it stops being legit only
+  // when the message proves the sender is forged or is diverting money.
+  const identitySuppressing = [...triggeredSignals].filter((s) => rules.identitySuppressors.has(s)).sort();
   const suppressed: string[] = [];
 
   for (const ev of evidence) {
@@ -95,9 +108,14 @@ export function scoreCase(caseId: string, evidence: Evidence[], rules: Rules = l
 
     const weight = Math.trunc(rule.weight);
 
-    if (weight < 0 && suppressing.length) {
-      if (!suppressed.includes(ev.signal)) suppressed.push(ev.signal);
-      continue;
+    if (weight < 0) {
+      const blocked = rules.identityCredits.has(ev.signal)
+        ? identitySuppressing.length > 0
+        : suppressing.length > 0;
+      if (blocked) {
+        if (!suppressed.includes(ev.signal)) suppressed.push(ev.signal);
+        continue;
+      }
     }
 
     const points = weight * ev.confidence;
