@@ -8,6 +8,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { runAll } from './analyzers/index';
 import { parseHops, resolveTrustBoundary } from './analyzers/m2_headers';
 import { isPublicIp } from './analyzers/ip';
+import { registrableDomain } from './analyzers/m7_graph';
 import { config } from './config';
 import { parseEmail } from './ingest/parser';
 import { loadRules, scoreCase } from './scoring/engine';
@@ -361,6 +362,85 @@ export async function campaignClusters() {
   }
   clusters.sort((a, b) => b.size - a.size);
   return { cluster_count: clusters.length, clusters };
+}
+
+/**
+ * Typed entity-relationship graph for the Graph tab: links cases to their
+ * sender domains, IP addresses, email aliases (from / reply-to / return-path),
+ * shared infrastructure (URL domains, attachment hashes) and reply chains
+ * (In-Reply-To / References -> a prior case's Message-ID). Two cases touching
+ * the same entity node are visibly related.
+ */
+export async function caseEntityGraph() {
+  const cases = (await listCases(1000)).map(rec);
+  const nodes = new Map<string, { id: string; type: string; label: string; score?: number; band?: string }>();
+  const links: Array<{ source: string; target: string; rel: string }> = [];
+
+  const addNode = (id: string, type: string, label: string, extra: { score?: number; band?: string } = {}) => {
+    if (!nodes.has(id)) nodes.set(id, { id, type, label, ...extra });
+    return id;
+  };
+  const domainOf = (a: string | null) => (a && a.includes('@') ? a.split('@').pop()!.toLowerCase() : null);
+  const headerVal = (r: CaseRecord, name: string) =>
+    (r.headers || []).find(([k]) => k.toLowerCase() === name)?.[1] || '';
+
+  // message-id -> case, for reply-chain edges
+  const midToCase = new Map<string, string>();
+  for (const r of cases) if (r.message_id) midToCase.set(r.message_id.trim(), r.case_id);
+
+  for (const r of cases) {
+    const cid = addNode(r.case_id, 'case', r.subject || '(no subject)', { score: r.verdict.score, band: r.verdict.band });
+
+    const alias = (addr: string | null, rel: string) => {
+      if (!addr) return;
+      const a = `alias:${addr.toLowerCase()}`;
+      addNode(a, 'alias', addr.toLowerCase());
+      links.push({ source: cid, target: a, rel });
+      const d = domainOf(addr);
+      if (d) { const dn = `domain:${d}`; addNode(dn, 'domain', d); links.push({ source: a, target: dn, rel: 'domain' }); }
+    };
+    alias(r.from_addr, 'from');
+    alias(r.reply_to, 'reply-to');
+    alias(r.return_path, 'return-path');
+
+    for (const h of r.hops || []) {
+      if (h.from_ip && isPublicIp(h.from_ip)) {
+        const ip = `ip:${h.from_ip}`;
+        addNode(ip, 'ip', h.from_ip);
+        links.push({ source: cid, target: ip, rel: h.trust === 'BOUNDARY' ? 'origin' : 'relay' });
+      }
+    }
+    for (const u of r.urls || []) {
+      const host = (u.domain || '').toLowerCase();
+      if (!host) continue;
+      const reg = registrableDomain(host) || host;
+      const n = `infra:${reg}`;
+      addNode(n, 'infra', reg);
+      links.push({ source: cid, target: n, rel: 'link' });
+    }
+    for (const at of r.attachments || []) {
+      if (!at.sha256) continue;
+      const n = `hash:${at.sha256}`;
+      addNode(n, 'hash', at.filename || at.sha256.slice(0, 10));
+      links.push({ source: cid, target: n, rel: 'attachment' });
+    }
+    // reply chains
+    const refs = `${headerVal(r, 'in-reply-to')} ${headerVal(r, 'references')}`.match(/<[^>]+>/g) || [];
+    for (const mid of refs) {
+      const other = midToCase.get(mid.trim());
+      if (other && other !== r.case_id) links.push({ source: cid, target: other, rel: 'reply-chain' });
+    }
+  }
+
+  // dedupe links
+  const seen = new Set<string>();
+  const uniq = links.filter((l) => {
+    const k = `${l.source}|${l.target}|${l.rel}`;
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+  return { nodes: [...nodes.values()], links: uniq };
 }
 
 export { getCase, listCases };
