@@ -37,7 +37,7 @@ export const api = {
   headers: (id) => j(`/api/cases/${id}/headers`),
   campaigns: () => j('/api/cases/graph/campaigns'),
   graphLive: () => j('/api/cases/graph/live'),
-  graphEntities: () => j('/api/cases/graph/entities'),
+  graphEntities: (ids) => j('/api/cases/graph/entities' + (ids && ids.length ? '?cases=' + ids.join(',') : '')),
   geo: (ip) => j(`/api/geo?ip=${encodeURIComponent(ip)}`),
   analyze: (file) => {
     const fd = new FormData()

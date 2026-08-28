@@ -371,8 +371,9 @@ export async function campaignClusters() {
  * (In-Reply-To / References -> a prior case's Message-ID). Two cases touching
  * the same entity node are visibly related.
  */
-export async function caseEntityGraph() {
-  const cases = (await listCases(1000)).map(rec);
+export async function caseEntityGraph(caseIds?: string[]) {
+  const pick = caseIds && caseIds.length ? new Set(caseIds) : null;
+  const cases = (await listCases(5000)).map(rec).filter((r) => !pick || pick.has(r.case_id));
   const nodes = new Map<string, { id: string; type: string; label: string; score?: number; band?: string }>();
   const links: Array<{ source: string; target: string; rel: string }> = [];
 

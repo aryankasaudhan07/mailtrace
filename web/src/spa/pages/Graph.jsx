@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
+import { Search, PanelLeftClose, PanelLeftOpen } from 'lucide-react'
 import PageHead from '../components/PageHead.jsx'
-import { api } from '../api.js'
+import { api, bandInfo } from '../api.js'
 import './graph.css'
 
 // Entity node types -> label + colour (canvas can't read CSS vars per-frame).
@@ -14,25 +15,57 @@ const TYPES = [
 ]
 const COLOR = Object.fromEntries(TYPES.map((t) => [t.key, t.color]))
 const LABEL = Object.fromEntries(TYPES.map((t) => [t.key, t.label]))
+const SEL_KEY = 'mt_graph_sel'
+const AUTO_ALL_MAX = 40 // if there are at most this many emails, select all by default
 
 export default function Graph() {
   const wrapRef = useRef(null)
   const canvasRef = useRef(null)
   const stRef = useRef({ pos: new Map(), drag: null, raf: 0 })
+  const [cases, setCases] = useState([])
+  const [sel, setSel] = useState(null) // Set of case_ids, null until initialised
   const [data, setData] = useState(null)
   const [hidden, setHidden] = useState(() => new Set())
   const [hover, setHover] = useState(null)
+  const [q, setQ] = useState('')
+  const [panel, setPanel] = useState(true)
 
-  // fetch + poll (WebSocket isn't available on serverless, so we poll)
+  // load the email list (for the picker); refresh periodically to catch new mail
   useEffect(() => {
     let alive = true
-    const load = () => api.graphEntities()
-      .then((g) => { if (alive) setData(g) })
-      .catch(() => { if (alive) setData({ nodes: [], links: [] }) })
+    const load = () => api.listCases(5000).then((r) => { if (alive) setCases(r.items || []) }).catch(() => {})
     load()
-    const t = setInterval(load, 6000)
+    const t = setInterval(load, 12000)
     return () => { alive = false; clearInterval(t) }
   }, [])
+
+  // initialise the selection once cases arrive (from localStorage, else a default)
+  useEffect(() => {
+    if (sel !== null || !cases.length) return
+    const ids = cases.map((c) => c.case_id)
+    let init
+    try {
+      const saved = JSON.parse(localStorage.getItem(SEL_KEY) || 'null')
+      if (Array.isArray(saved)) init = saved.filter((id) => ids.includes(id))
+    } catch { /* ignore */ }
+    if (!init || !init.length) init = ids.length <= AUTO_ALL_MAX ? ids : ids.slice(0, 25)
+    setSel(new Set(init))
+  }, [cases, sel])
+
+  // fetch the graph for the selected emails (debounced) + live poll
+  useEffect(() => {
+    if (sel === null) return
+    try { localStorage.setItem(SEL_KEY, JSON.stringify([...sel])) } catch { /* ignore */ }
+    let alive = true
+    const ids = [...sel]
+    const load = () => {
+      if (!ids.length) { setData({ nodes: [], links: [] }); return }
+      api.graphEntities(ids).then((g) => { if (alive) setData(g) }).catch(() => { if (alive) setData({ nodes: [], links: [] }) })
+    }
+    const debounce = setTimeout(load, 250)
+    const poll = setInterval(load, 8000)
+    return () => { alive = false; clearTimeout(debounce); clearInterval(poll) }
+  }, [sel])
 
   // build simulation + render loop
   useEffect(() => {
@@ -161,24 +194,74 @@ export default function Graph() {
 
   const counts = {}
   for (const n of (data?.nodes || [])) counts[n.type] = (counts[n.type] || 0) + 1
-  const toggle = (k) => setHidden((h) => { const n = new Set(h); n.has(k) ? n.delete(k) : n.add(k); return n })
+  const toggleType = (k) => setHidden((h) => { const n = new Set(h); n.has(k) ? n.delete(k) : n.add(k); return n })
+
+  const toggleSel = (id) => setSel((s) => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  const filtered = useMemo(() => {
+    const needle = q.trim().toLowerCase()
+    if (!needle) return cases
+    return cases.filter((c) => `${c.subject || ''} ${c.from_addr || ''}`.toLowerCase().includes(needle))
+  }, [cases, q])
+  const setAll = (ids) => setSel(new Set(ids))
+  const selCount = sel ? sel.size : 0
 
   return (
     <div>
       <PageHead title="Graph" subtitle="Relationship graph — sender domains, IPs, aliases, reply chains and shared infrastructure" />
 
       <div className="card graph-card">
-        <div className="graph-legend">
-          {TYPES.map((t) => (
-            <button key={t.key} className={'gleg' + (hidden.has(t.key) ? ' off' : '')} onClick={() => toggle(t.key)}>
-              <span className="gdot" style={{ background: t.color }} />{t.label}<b>{counts[t.key] || 0}</b>
-            </button>
-          ))}
-        </div>
-        <div className="graph-canvas-wrap" ref={wrapRef}>
-          <canvas ref={canvasRef} />
-          {!data && <div className="graph-loading">Loading graph…</div>}
-          {data && !data.nodes.length && <div className="graph-loading">No cases yet — analyze an email to build the graph.</div>}
+        <div className="graph-layout">
+          {panel && (
+            <aside className="graph-picker">
+              <div className="gp-head">
+                <span>Emails <b>{selCount}</b> / {cases.length}</span>
+                <button className="gp-x" onClick={() => setPanel(false)} title="Hide panel"><PanelLeftClose size={16} /></button>
+              </div>
+              <div className="gp-search">
+                <Search size={14} />
+                <input placeholder="Filter emails…" value={q} onChange={(e) => setQ(e.target.value)} />
+              </div>
+              <div className="gp-actions">
+                <button onClick={() => setAll(cases.map((c) => c.case_id))}>Select all</button>
+                <button onClick={() => setAll([])}>None</button>
+                <button onClick={() => setAll(cases.slice(0, 25).map((c) => c.case_id))}>Recent 25</button>
+              </div>
+              <div className="gp-list">
+                {filtered.length === 0 && <div className="gp-empty">No emails match.</div>}
+                {filtered.map((c) => {
+                  const info = bandInfo(c.band)
+                  return (
+                    <label className="gp-item" key={c.case_id}>
+                      <input type="checkbox" checked={sel ? sel.has(c.case_id) : false} onChange={() => toggleSel(c.case_id)} />
+                      <span className={'gp-dot ' + info.key} />
+                      <span className="gp-subj" title={c.subject}>{c.subject || '(no subject)'}</span>
+                      <span className="gp-score">{c.score}</span>
+                    </label>
+                  )
+                })}
+              </div>
+            </aside>
+          )}
+
+          <div className="graph-main">
+            <div className="graph-legend">
+              {!panel && (
+                <button className="gleg gp-open" onClick={() => setPanel(true)}><PanelLeftOpen size={14} /> Select emails</button>
+              )}
+              {TYPES.map((t) => (
+                <button key={t.key} className={'gleg' + (hidden.has(t.key) ? ' off' : '')} onClick={() => toggleType(t.key)}>
+                  <span className="gdot" style={{ background: t.color }} />{t.label}<b>{counts[t.key] || 0}</b>
+                </button>
+              ))}
+            </div>
+            <div className="graph-canvas-wrap" ref={wrapRef}>
+              <canvas ref={canvasRef} />
+              {!data && <div className="graph-loading">Loading graph…</div>}
+              {data && !data.nodes.length && (
+                <div className="graph-loading">{selCount === 0 ? 'No emails selected — tick some in the panel to build the graph.' : 'No cases yet — analyze an email to build the graph.'}</div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
