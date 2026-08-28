@@ -10,7 +10,7 @@
 #
 # Owner: Track E
 
-version: "1.5.3"
+version: "1.5.4"
 
 bands:
   benign: [0, 24]

@@ -24,7 +24,7 @@
  *   4. Live account-existence   -- REAL Holehe-style probes of platforms whose
  *      probes                      public signup/reset endpoints answer honestly
  *                                  (Chess.com, Spotify, Duolingo, WordPress,
- *                                  Adobe, Plurk).
+ *                                  Adobe, Plurk, GitHub).
  *
  * LinkedIn / Instagram / X / Threads / Quora hard-block automated checks
  * (429 / anti-bot / login required) and cannot be probed from a server -- that is
@@ -210,6 +210,25 @@ const LIVE_PROBES: LiveProbe[] = [
       if (t === 'true') return 'registered';
       if (t === 'false') return 'not_registered';
       return 'unknown';
+    },
+  },
+  {
+    // GitHub blocks email enumeration, but git commits embed the author email,
+    // and the public commit-search API is queryable by it. A hit is hard proof of
+    // a GitHub account; "not_registered" here means "no public commit with this
+    // address" (they could still use a private/noreply email). Search API is
+    // rate-limited (10/min/IP unauthenticated) -> 403/429 degrade to 'unknown'.
+    name: 'GitHub',
+    check: async (email) => {
+      const r = await fetch(`https://api.github.com/search/commits?q=author-email:${encodeURIComponent(email)}&per_page=1`, {
+        signal: timeoutSignal(6000),
+        headers: { 'user-agent': 'Mailtrace-Footprint/1.0', accept: 'application/vnd.github+json' },
+      });
+      if (r.status === 403 || r.status === 429) return 'unknown';
+      if (!r.ok) return 'unknown';
+      const d = (await r.json()) as { total_count?: number };
+      if (typeof d.total_count !== 'number') return 'unknown';
+      return d.total_count > 0 ? 'registered' : 'not_registered';
     },
   },
 ];
