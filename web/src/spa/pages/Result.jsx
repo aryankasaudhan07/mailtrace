@@ -29,6 +29,7 @@ const CLASS_DETAIL = {
 const LANES = [
   ['M2', 'Header & relay'], ['M3', 'Authentication'], ['M4', 'Content analysis'],
   ['M5', 'Network & geo'], ['M6', 'Domain intel'], ['M7', 'Correlation'],
+  ['M8', 'Email footprint'],
 ]
 
 const SIG_ICON = {
@@ -251,6 +252,41 @@ export default function Result() {
           <Link to={`/forensic/${id}`} className="violet-link att-more">Full forensic breakdown <ArrowRight size={14} /></Link>
         </div>
       </div>
+
+      {/* ---- row 4: sender email footprint (M8) ---- */}
+      {c.footprint && (
+        <div className="card" style={{ marginTop: 20 }}>
+          <div className="card-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Fingerprint size={17} /> Sender email footprint
+          </div>
+          <div className="muted small" style={{ marginTop: -8, marginBottom: 14 }}>
+            Platforms where <b>{c.footprint.email || c.from_addr}</b> appears to be registered — identity context, not attribution. A large footprint never means the message is safe.
+          </div>
+          {c.footprint.disposable && (
+            <div className="sid-note bad" style={{ marginBottom: 14 }}>
+              <AlertTriangle size={15} /> Disposable / temporary-inbox sender domain — typical of throwaway attacker accounts.
+            </div>
+          )}
+          {c.footprint.registered_count > 0 ? (
+            <>
+              <div className="fp-grid">
+                {c.footprint.registered.map((p, i) => (
+                  <span className={'fp-chip' + (p.simulated ? ' sim' : '')} key={i} title={p.method}>
+                    <span className="fp-dot" />{p.platform}{p.simulated && <em>demo</em>}
+                  </span>
+                ))}
+              </div>
+              {c.footprint.includes_simulated && (
+                <div className="muted small" style={{ marginTop: 12 }}>
+                  Chips marked <b>demo</b> come from the labelled simulated dataset; the rest are live results (Gravatar profile / linked accounts).
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="muted center" style={{ padding: 18 }}>No public account footprint found for this address.</div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

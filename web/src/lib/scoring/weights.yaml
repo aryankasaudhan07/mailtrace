@@ -10,7 +10,7 @@
 #
 # Owner: Track E
 
-version: "1.3.0"
+version: "1.4.0"
 
 bands:
   benign: [0, 24]
@@ -262,3 +262,32 @@ signals:
     analyzer: M6
     label: "Domain does not resolve (no A record)"
     rationale: "A non-resolving domain is either abandoned or completely spoofed."
+
+  # ---------------- M8 :: sender email footprint / account enumeration ----------
+  disposable_sender_domain:
+    weight: 15
+    analyzer: M8
+    label: "Sender uses a disposable / temp-mail provider"
+    rationale: >
+      Throwaway inbox providers (mailinator, guerrillamail, temp-mail, ...) are a
+      cheap, high-signal red flag: legitimate senders almost never use them, while
+      spam and low-effort phishing routinely do.
+
+  sender_email_footprint:
+    weight: 0
+    analyzer: M8
+    label: "Sender email account footprint"
+    rationale: >
+      Informational only. Lists the platforms where the sender's address is
+      already registered (Gravatar linked accounts, live probes, demo dataset).
+      A large footprint does NOT mean 'safe' -- an established mailbox can still be
+      compromised -- so this carries zero weight and is surfaced for the analyst.
+
+  sender_no_footprint:
+    weight: 0
+    analyzer: M8
+    label: "No public account footprint found for sender"
+    rationale: >
+      Informational only, weight 0 by design. A privacy-conscious or corporate
+      address legitimately shows no public footprint, so absence is never treated
+      as malicious -- it is context for the analyst, not a score.

@@ -229,9 +229,9 @@ export async function buildReportPdf(rec: CaseRecord): Promise<Uint8Array> {
   // ---- analyzer coverage: mini donut-gauges (echoes template gauge row) ----
   page.drawText('Analysis coverage', { x: MARGIN, y: y - 10, size: 11, font: bold, color: INK });
   y -= 26;
-  const lanes: Array<[string, string]> = [['M2', 'Header & relay'], ['M3', 'Authentication'], ['M4', 'Content (AI)'], ['M5', 'Network & geo'], ['M6', 'Domain'], ['M7', 'Correlation']];
+  const lanes: Array<[string, string]> = [['M2', 'Header & relay'], ['M3', 'Authentication'], ['M4', 'Content (AI)'], ['M5', 'Network & geo'], ['M6', 'Domain'], ['M7', 'Correlation'], ['M8', 'Email footprint']];
   const unavail = new Set(v.lanes_unavailable as unknown as string[]);
-  const gW = CONTENT_W / 6;
+  const gW = CONTENT_W / lanes.length;
   for (let i = 0; i < lanes.length; i++) {
     const [id, name] = lanes[i];
     const ok = !unavail.has(id);
@@ -304,6 +304,36 @@ export async function buildReportPdf(rec: CaseRecord): Promise<Uint8Array> {
   });
   y -= 52;
   para('n/e = not enforced. Authentication is a weak signal alone: the most damaging attacks (thread hijacking from a compromised mailbox) pass SPF, DKIM and DMARC by construction.', { size: 8, color: MUTED, gap: 3 });
+
+  // sender email footprint (M8)
+  const foot = rec.evidence.find((e) => e.signal === 'sender_email_footprint');
+  const footDetail = (foot?.detail ?? {}) as {
+    platforms?: string[]; registered?: Array<{ platform: string; method: string; simulated: boolean }>;
+    disposable?: boolean; includes_simulated?: boolean; real_count?: number;
+  };
+  const platforms = footDetail.registered ?? [];
+  if (foot || rec.evidence.some((e) => e.signal === 'sender_no_footprint')) {
+    heading('Sender email footprint');
+    if (platforms.length) {
+      para(`This address is registered on ${platforms.length} platform(s):`, { size: 9, color: INK, gap: 4 });
+      y -= 2;
+      const cols = 2, colW = (CONTENT_W - 16) / cols;
+      need(Math.ceil(platforms.length / cols) * 16 + 4);
+      platforms.forEach((p, i) => {
+        const px = MARGIN + (i % cols) * (colW + 16);
+        if (i % cols === 0 && i > 0) y -= 16;
+        const dotCol = p.simulated ? MUTED : TEAL2;
+        page.drawCircle({ x: px + 4, y: y - 8, size: 3, color: dotCol });
+        const label = p.platform + (p.simulated ? '  (demo)' : '');
+        page.drawText(ellip(label, 8.5, bold, colW - 20), { x: px + 14, y: y - 11, size: 8.5, font: bold, color: INK });
+      });
+      y -= 18;
+      if (footDetail.includes_simulated) para('Entries marked (demo) are from the labelled simulated dataset; the rest are live results (Gravatar / linked accounts).', { size: 7.5, color: MUTED, gap: 3 });
+    } else {
+      para('No public account footprint found for this sender address.', { size: 9, color: MUTED, gap: 3 });
+    }
+    para('Footprint is identity context, not attribution — a large footprint never means the message is safe.', { size: 7.5, color: MUTED, gap: 3 });
+  }
 
   // relay trace timeline
   heading('Relay trace & trust boundary');

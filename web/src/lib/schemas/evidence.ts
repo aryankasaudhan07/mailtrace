@@ -18,6 +18,7 @@ export enum Analyzer {
   M5_NETWORK = 'M5',
   M6_DOMAIN = 'M6',
   M7_GRAPH = 'M7',
+  M8_FOOTPRINT = 'M8',
 }
 
 /**

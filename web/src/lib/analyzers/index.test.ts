@@ -3,14 +3,15 @@ import { Analyzer } from '../schemas/evidence';
 import { registry } from './index';
 
 describe('analyzer registry', () => {
-  it('all six lanes register when the barrel is imported', () => {
+  it('all seven lanes register when the barrel is imported', () => {
     const reg = registry();
     for (const id of [
       Analyzer.M2_HEADERS, Analyzer.M3_AUTH, Analyzer.M4_CONTENT,
       Analyzer.M5_NETWORK, Analyzer.M6_DOMAIN, Analyzer.M7_GRAPH,
+      Analyzer.M8_FOOTPRINT,
     ]) {
       expect(reg.has(id), id).toBe(true);
     }
-    expect(reg.size).toBe(6);
+    expect(reg.size).toBe(7);
   });
 });

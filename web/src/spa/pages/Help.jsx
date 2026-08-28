@@ -52,6 +52,7 @@ export default function Help() {
                 ['M5', 'Network intelligence', 'Tor / VPN / datacenter origin, GeoLite2 geolocation'],
                 ['M6', 'Domain intelligence', 'Domain age, DNS, homograph / lookalike detection'],
                 ['M7', 'Campaign correlation', 'Links cases through shared attacker infrastructure'],
+                ['M8', 'Email footprint', 'Where the sender address is registered (Gravatar, platforms) + disposable-domain detection'],
               ].map(([id, t, d]) => (
                 <div className="an-help-row" key={id}>
                   <span className="an-badge">{id}</span>

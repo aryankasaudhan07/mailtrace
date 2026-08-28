@@ -45,4 +45,22 @@ export const config = {
   geoOnline(): boolean {
     return process.env.GEO_DISABLE_ONLINE !== '1';
   },
+  /**
+   * M8 footprint: whether the analyzer may make live network calls (Gravatar +
+   * the platform-probe catalog). Default on, but off automatically under Vitest
+   * so the suite never touches the network. Force with M8_ENUM_ONLINE=1/0.
+   */
+  footprintOnline(): boolean {
+    if (process.env.M8_ENUM_ONLINE != null) return process.env.M8_ENUM_ONLINE !== '0';
+    return !process.env.VITEST;
+  },
+  /**
+   * M8 footprint: whether to include the clearly-labelled simulated dataset so
+   * the demo shows a rich platform list even when live probing is blocked.
+   * Defaults to fixture/demo mode; force with M8_DEMO=1/0.
+   */
+  footprintDemo(): boolean {
+    if (process.env.M8_DEMO != null) return process.env.M8_DEMO !== '0';
+    return this.fixtureMode();
+  },
 };

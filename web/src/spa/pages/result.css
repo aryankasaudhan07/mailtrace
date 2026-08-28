@@ -106,3 +106,14 @@
   .score-row { flex-direction: column; }
   .ev-grid, .cov-grid, .class-meta { grid-template-columns: 1fr; }
 }
+
+/* M8 sender email footprint */
+.fp-grid { display: flex; flex-wrap: wrap; gap: 9px; }
+.fp-chip { display: inline-flex; align-items: center; gap: 8px; background: var(--card-2);
+  border: 1px solid var(--line-2); border-radius: 9px; padding: 8px 13px; font-size: .85rem;
+  font-weight: 600; color: var(--text); }
+.fp-chip .fp-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--low); flex-shrink: 0; }
+.fp-chip.sim { border-style: dashed; color: var(--text-2); }
+.fp-chip.sim .fp-dot { background: var(--text-3); }
+.fp-chip em { font-style: normal; font-size: .68rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .04em; color: var(--text-3); background: var(--line); border-radius: 5px; padding: 1px 5px; }

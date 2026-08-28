@@ -116,6 +116,9 @@ export function caseDetail(c: StoredCase) {
     url_count: r.urls.length,
     attachment_count: r.attachments.length,
     verdict: r.verdict,
+    // M8 sender-footprint detail (informational CLEAR evidence, so it never
+    // reaches the frontend via scored contributions -- surface it here).
+    footprint: (r.evidence.find((e) => e.signal === 'sender_email_footprint' || e.signal === 'sender_no_footprint')?.detail ?? null) as Record<string, unknown> | null,
   };
 }
 

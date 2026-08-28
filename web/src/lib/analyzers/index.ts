@@ -8,5 +8,6 @@ import './m4_content';
 import './m5_network';
 import './m6_domain';
 import './m7_graph';
+import './m8_footprint';
 
 export { runAll, registry } from './base';
