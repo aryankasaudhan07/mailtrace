@@ -74,6 +74,11 @@ export default function Login() {
     || (mode === 'reset' && onVerify)
   return (
     <div className="login">
+      <video className="login-video" autoPlay muted loop playsInline preload="auto">
+        <source src="/hero-ambient.mp4" type="video/mp4" />
+      </video>
+      <div className="login-scrim" />
+
       <header className="login-top">
         <div className="brand"><div className="brand-badge"><Mail size={18} /></div><b>Mailtrace</b></div>
         <div className="login-top-right">
@@ -84,9 +89,9 @@ export default function Login() {
 
       <div className="login-body">
         <section className="hero">
-          <h1><span className="grad">AI-Powered</span> Email Threat Detection, Geolocation &amp; Forensic Intelligence Platform</h1>
-          <p className="hero-sub">Analyze. Detect. Investigate.<br />Smarter Email Security for a Safer Tomorrow.</p>
-          <div className="orb"><div className="orb-shield"><Mail size={44} /></div><div className="ring r1" /><div className="ring r2" /></div>
+          <span className="hero-eyebrow">Email Threat Intelligence</span>
+          <h1><span className="grad">AI-Powered</span> Email Threat Detection, Geolocation &amp; Forensic Intelligence</h1>
+          <p className="hero-sub">Analyze. Detect. Investigate. Smarter email security for a safer tomorrow.</p>
           <div className="features">
             {FEATURES.map(({ icon: Icon, title: t, text }) => (
               <div className="feature" key={t}>

@@ -1,86 +1,94 @@
-/* Horizon-UI-inspired theme. Light default + dark override via [data-theme].
-   DM Sans is self-hosted via @fontsource (imported in main.jsx) — no third-party
-   font requests. */
+/* Mailtrace theme — finseo-inspired editorial aesthetic.
+   Warm cream base + near-black ink + emerald accent (ties to the mint "M"
+   monogram). Light default + warm-charcoal dark override via [data-theme].
+   Onest is self-hosted via @fontsource (imported in app/layout.tsx) — no
+   third-party font requests. The accent variables keep the historical
+   `--violet*` names so every page restyles from these tokens alone. */
 
 :root {
-  /* surfaces (light) */
-  --bg: #f4f7fe;
-  --bg-2: #ffffff;
-  --sidebar: #ffffff;
+  /* surfaces (warm cream) */
+  --bg: #f3f0e9;
+  --bg-2: #fbfaf6;
+  --sidebar: #fbf9f4;
   --card: #ffffff;
-  --card-2: #f4f7fe;
-  --raised: #f4f7fe;
-  --code-bg: #1b254b;
-  --line: #edf0f9;
-  --line-2: #e0e5f2;
+  --card-2: #f3efe7;
+  --raised: #f3efe7;
+  --code-bg: #1c1a15;
+  --line: #ece7dc;
+  --line-2: #ddd7c9;
 
-  /* brand */
-  --violet: #4318ff;
-  --violet-2: #3311db;
-  --violet-dim: rgba(67, 24, 255, 0.08);
-  --violet-grad: linear-gradient(135deg, #868cff 0%, #4318ff 100%);
+  /* accent (emerald) — historical --violet* names kept for compatibility */
+  --violet: #0e7a57;
+  --violet-2: #0a6144;
+  --violet-dim: rgba(14, 122, 87, 0.09);
+  --violet-grad: linear-gradient(135deg, #18a774 0%, #0e7a57 100%);
 
-  /* text */
-  --text: #1b2559;
-  --text-2: #707eae;
-  --text-3: #a3aed0;
+  /* text (warm ink) */
+  --text: #1b1811;
+  --text-2: #6a6455;
+  --text-3: #9a927f;
 
-  /* severity */
-  --crit: #ee5d50; --crit-bg: rgba(238, 93, 80, 0.10);
-  --high: #ffa043; --high-bg: rgba(255, 160, 67, 0.12);
-  --med: #ffb547;  --med-bg: rgba(255, 181, 71, 0.12);
-  --susp: #ffce20;
-  --low: #01b574;  --low-bg: rgba(1, 181, 116, 0.10);
-  --benign: #01b574;
-  --info: #3965ff;
+  /* severity (tuned to sit on cream) */
+  --crit: #d8433d; --crit-bg: rgba(216, 67, 61, 0.10);
+  --high: #e0720c; --high-bg: rgba(224, 114, 12, 0.12);
+  --med: #b8860b;  --med-bg: rgba(184, 134, 11, 0.14);
+  --susp: #b8860b;
+  --low: #0e9e6e;  --low-bg: rgba(14, 158, 110, 0.10);
+  --benign: #0e9e6e;
+  --info: #2f7db0;
 
   /* map */
-  --map-ocean: #e3ebfb; --map-land: #c6d3ef; --map-line: #ffffff;
+  --map-ocean: #ece7db; --map-land: #d8cfbc; --map-line: #fbfaf6;
 
-  --radius: 20px;
-  --radius-sm: 14px;
-  --shadow: 0 18px 40px rgba(112, 144, 176, 0.12);
-  --shadow-sm: 0 4px 16px rgba(112, 144, 176, 0.10);
+  --radius: 18px;
+  --radius-sm: 12px;
+  --shadow: 0 1px 2px rgba(60, 50, 25, 0.04), 0 14px 34px rgba(60, 50, 25, 0.07);
+  --shadow-sm: 0 1px 2px rgba(60, 50, 25, 0.05), 0 5px 14px rgba(60, 50, 25, 0.05);
+
+  /* dark cinematic ink (used by the login hero regardless of theme) */
+  --ink: #14120d;
 }
 
 :root[data-theme="dark"] {
-  --bg: #0b1437;
-  --bg-2: #111c44;
-  --sidebar: #0b1437;
-  --card: #111c44;
-  --card-2: #1b254b;
-  --raised: #1b254b;
-  --code-bg: #060c24;
-  --line: #1b254b;
-  --line-2: #2a3562;
+  --bg: #14120e;
+  --bg-2: #1b1813;
+  --sidebar: #131109;
+  --card: #1d1a14;
+  --card-2: #26221a;
+  --raised: #26221a;
+  --code-bg: #0e0c08;
+  --line: #2a2620;
+  --line-2: #38332a;
 
-  --violet: #7551ff;
-  --violet-2: #4318ff;
-  --violet-dim: rgba(117, 81, 255, 0.18);
-  --violet-grad: linear-gradient(135deg, #7551ff 0%, #4318ff 100%);
+  --violet: #2abe86;
+  --violet-2: #17a171;
+  --violet-dim: rgba(42, 190, 134, 0.16);
+  --violet-grad: linear-gradient(135deg, #2abe86 0%, #12855f 100%);
 
-  --text: #ffffff;
-  --text-2: #a3aed0;
-  --text-3: #8f9bba;
+  --text: #f7f4ed;
+  --text-2: #b9b2a2;
+  --text-3: #8a8375;
 
-  --crit: #ff5c6c; --crit-bg: rgba(255, 92, 108, 0.14);
-  --high: #ffa043; --high-bg: rgba(255, 160, 67, 0.16);
-  --med: #ffce20;  --med-bg: rgba(255, 206, 32, 0.16);
-  --low: #01d28e;  --low-bg: rgba(1, 210, 142, 0.14);
-  --benign: #01d28e;
-  --info: #6ad2ff;
+  --crit: #f0665f; --crit-bg: rgba(240, 102, 95, 0.15);
+  --high: #f79240; --high-bg: rgba(247, 146, 64, 0.16);
+  --med: #e7b94a;  --med-bg: rgba(231, 185, 74, 0.16);
+  --susp: #e7b94a;
+  --low: #2bd69a;  --low-bg: rgba(43, 214, 154, 0.14);
+  --benign: #2bd69a;
+  --info: #63b8e8;
 
-  --map-ocean: #0a1024; --map-land: #1e2b52; --map-line: #ffffff14;
+  --map-ocean: #181510; --map-land: #2c2820; --map-line: #ffffff12;
 
-  --shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-  --shadow-sm: 0 6px 18px rgba(0, 0, 0, 0.30);
+  --shadow: 0 2px 6px rgba(0, 0, 0, 0.30), 0 20px 44px rgba(0, 0, 0, 0.42);
+  --shadow-sm: 0 2px 6px rgba(0, 0, 0, 0.30), 0 6px 18px rgba(0, 0, 0, 0.30);
 }
 
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 body {
   margin: 0;
-  font-family: "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family: "Onest Variable", "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.01em;
   background: var(--bg);
   color: var(--text);
   -webkit-font-smoothing: antialiased;
@@ -95,12 +103,12 @@ button { font-family: inherit; cursor: pointer; }
 /* ---- primitives ---- */
 .card {
   background: var(--card);
-  border: none;
+  border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   padding: 22px;
 }
-.card-title { font-size: 1.02rem; font-weight: 700; margin: 0 0 16px; color: var(--text); }
+.card-title { font-size: 1.02rem; font-weight: 700; margin: 0 0 16px; color: var(--text); letter-spacing: -.02em; }
 
 .badge {
   display: inline-flex; align-items: center; gap: 5px;
@@ -118,8 +126,8 @@ button { font-family: inherit; cursor: pointer; }
 .btn {
   display: inline-flex; align-items: center; gap: 8px; justify-content: center;
   border: none; border-radius: var(--radius-sm); padding: 12px 20px;
-  font-size: .9rem; font-weight: 700; color: #fff; background: var(--violet);
-  box-shadow: 0 8px 20px rgba(67, 24, 255, 0.25); transition: filter .15s, transform .05s;
+  font-size: .9rem; font-weight: 600; color: #fff; background: var(--violet);
+  box-shadow: 0 6px 16px rgba(14, 122, 87, 0.22); transition: filter .15s, transform .05s;
 }
 .btn:hover { filter: brightness(1.08); }
 .btn:active { transform: translateY(1px); }

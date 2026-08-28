@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from 'next';
-// Self-hosted DM Sans (bundled — zero third-party font requests)
+// Self-hosted fonts (bundled — zero third-party font requests).
+// Onest is the primary UI/display face (elegant grotesque); DM Sans is kept as
+// a fallback weight source for any component that still references it.
+import '@fontsource-variable/onest/index.css';
 import '@fontsource/dm-sans/400.css';
 import '@fontsource/dm-sans/500.css';
 import '@fontsource/dm-sans/600.css';
