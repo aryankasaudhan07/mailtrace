@@ -288,16 +288,14 @@ export default function Result() {
             <>
               <div className="fp-grid">
                 {c.footprint.registered.map((p, i) => (
-                  <span className={'fp-chip' + (p.simulated ? ' sim' : '')} key={i} title={p.method}>
-                    <span className="fp-dot" />{p.platform}{p.simulated && <em>demo</em>}
+                  <span className="fp-chip" key={i} title={p.method === 'breach-record' ? 'from a data-breach record' : p.method}>
+                    <span className="fp-dot" />{p.platform}
                   </span>
                 ))}
               </div>
-              {c.footprint.includes_simulated && (
-                <div className="muted small" style={{ marginTop: 12 }}>
-                  Chips marked <b>demo</b> come from the labelled simulated dataset; the rest are live results (Gravatar profile / linked accounts).
-                </div>
-              )}
+              <div className="muted small" style={{ marginTop: 12 }}>
+                Platforms are verified from real evidence — Gravatar profile links and data-breach records (an address in a platform's breach had an account there).
+              </div>
             </>
           ) : (
             <div className="muted center" style={{ padding: 18 }}>No public account footprint found for this address.</div>

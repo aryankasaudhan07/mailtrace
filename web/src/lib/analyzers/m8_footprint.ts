@@ -11,22 +11,26 @@
  * large footprint never means "safe" (a real, established mailbox can still be
  * compromised -- see the threat model on thread hijacking).
  *
- * Sources, in order of reliability:
- *   1. Disposable-domain match       -- offline, deterministic, always runs.
- *   2. Gravatar avatar + profile     -- reliable server-side; the profile JSON
- *                                       lists the owner's linked accounts, which
- *                                       is genuine cross-platform footprint.
- *   3. Platform-probe catalog        -- best-effort live probing; most sites
- *                                       block datacenter IPs, so these commonly
- *                                       return "unknown" from production.
- *   4. Simulated dataset             -- clearly labelled (`simulated: true`), for
- *                                       demos where live probing is blocked.
+ * Sources are ALL REAL -- no simulated/demo data:
+ *   1. Disposable-domain match  -- offline, deterministic, always runs.
+ *   2. Gravatar                 -- avatar existence + the profile's linked social
+ *                                  accounts (genuine cross-platform footprint).
+ *   3. Data-breach records      -- HIBP (with key) or the free XposedOrNot: a
+ *                                  breach on a platform is proof the address had
+ *                                  an account there (in the LinkedIn breach ->
+ *                                  had a LinkedIn account). Combolists / data
+ *                                  brokers are filtered out. Also gives the age
+ *                                  floor ("in use since <earliest breach year>").
+ *
+ * We do NOT live-probe Instagram/LinkedIn/etc. signup endpoints: they block
+ * datacenter IPs and would return "unknown" or need fragile scraping. Breach
+ * records are the reliable, real proof of platform presence instead.
  *
  * Never raises: every network path is guarded and degrades to UNAVAILABLE.
  */
 
 import { createHash } from 'node:crypto';
-import { Analyzer, clear, triggered, unavailable, type Evidence } from '../schemas/evidence';
+import { Analyzer, clear, triggered, type Evidence } from '../schemas/evidence';
 import type { ParsedEmail } from '../schemas/email';
 import { config } from '../config';
 import { register } from './base';
@@ -51,12 +55,18 @@ const WEBMAIL = new Set([
   'aol.com', 'gmx.com', 'zoho.com', 'mail.com', 'yandex.com',
 ]);
 
-// Platform catalog for the probe/simulation layer.
-const CATALOG = [
-  'Instagram', 'Facebook', 'X (Twitter)', 'LinkedIn', 'Spotify', 'Adobe', 'Pinterest',
-  'GitHub', 'Duolingo', 'WordPress', 'Imgur', 'Patreon', 'Snapchat', 'Discord',
-  'Reddit', 'Netflix', 'Amazon', 'Microsoft', 'Apple', 'Dropbox', 'Quora', 'Twitch',
+// Breach "names" that are combolists / data brokers / infostealer dumps, NOT a
+// single platform the address was registered on -- excluded from the platform list.
+const BREACH_AGGREGATORS = [
+  'collection', 'antipublic', 'exploit', 'onliner', 'verifications', 'peopledatalabs',
+  'people data labs', 'pdl', 'data enrichment', 'dataenrichment', 'breachcompilation',
+  'breach compilation', 'pemiblanc', 'spambot', 'combolist', 'combo list', 'stealer',
+  'redline', 'raccoon', 'scraped', 'unverified', 'pentester', 'naz.api', 'nazapi',
 ];
+const isAggregatorBreach = (name: string) => {
+  const n = name.toLowerCase();
+  return BREACH_AGGREGATORS.some((a) => n.includes(a));
+};
 
 export type FootStatus = 'registered' | 'not_registered' | 'unknown';
 export interface PlatformHit {
@@ -67,7 +77,6 @@ export interface PlatformHit {
 }
 
 const md5 = (s: string) => createHash('md5').update(s).digest('hex');
-const sha256 = (s: string) => createHash('sha256').update(s).digest('hex');
 
 function timeoutSignal(ms: number): AbortSignal {
   const c = new AbortController();
@@ -132,7 +141,7 @@ async function checkHIBP(email: string): Promise<BreachInfo | null> {
     const dates = arr.map((b) => b.BreachDate).filter((d): d is string => !!d).sort();
     return {
       count: arr.length,
-      breaches: arr.map((b) => b.Title || b.Name).slice(0, 12),
+      breaches: arr.map((b) => b.Title || b.Name).slice(0, 50),
       earliest: dates[0] ?? null,
       latest: dates[dates.length - 1] ?? null,
       simulated: false,
@@ -164,7 +173,7 @@ async function checkXposedOrNot(email: string): Promise<BreachInfo | null> {
       .map((b) => Number(String(b.xposed_date ?? '').match(/\d{4}/)?.[0]))
       .filter((y) => y > 1990 && y <= thisYear + 1)
       .sort((a, b) => a - b);
-    const names = details.map((b) => b.breach).filter((n): n is string => !!n).slice(0, 12);
+    const names = details.map((b) => b.breach).filter((n): n is string => !!n).slice(0, 50);
     return {
       count: details.length,
       breaches: names,
@@ -177,27 +186,24 @@ async function checkXposedOrNot(email: string): Promise<BreachInfo | null> {
   }
 }
 
-// Real breach names, only used to make the labelled DEMO summary look plausible.
-const DEMO_BREACHES = ['Collection1', 'LinkedIn', 'Adobe', 'Canva', 'Dropbox', 'MyFitnessPal', 'Chegg', 'Twitter', 'Wattpad', 'Deezer', 'Ticketmaster'];
-
-/** Deterministic, clearly-labelled simulated breach summary for demos. */
-function simulatedBreach(email: string): BreachInfo {
-  const b = Buffer.from(sha256(email.toLowerCase()), 'hex');
-  const count = 1 + (b[2] % 7); // 1..7
-  const year = 2012 + (b[3] % 11); // 2012..2022
-  const month = 1 + (b[4] % 12);
-  const earliest = `${year}-${String(month).padStart(2, '0')}-01`;
-  const names: string[] = [];
-  const used = new Set<number>();
-  let i = 5;
-  while (names.length < count && used.size < DEMO_BREACHES.length) {
-    const idx = b[i % b.length] % DEMO_BREACHES.length;
-    i += 1;
-    if (used.has(idx)) continue;
-    used.add(idx);
-    names.push(DEMO_BREACHES[idx]);
+/**
+ * Turn REAL breach names into platform registrations. A breach on a platform is
+ * hard proof the address had an account there (the address is in the LinkedIn
+ * breach => it had a LinkedIn account). Combolists / data-broker dumps are
+ * excluded -- they aren't a single platform.
+ */
+function breachPlatforms(names: string[]): PlatformHit[] {
+  const out: PlatformHit[] = [];
+  const seen = new Set<string>();
+  for (const raw of names) {
+    const name = raw.trim();
+    if (!name || isAggregatorBreach(name)) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push({ platform: name, status: 'registered', method: 'breach-record', simulated: false });
   }
-  return { count, breaches: names, earliest, latest: earliest, simulated: true };
+  return out;
 }
 
 /** Fold a BreachInfo into the report-friendly shape (adds age estimate). */
@@ -218,39 +224,7 @@ function breachDetail(b: BreachInfo | null, source: string | null) {
 }
 
 /**
- * Live platform probing. Most consumer platforms block datacenter IPs and change
- * their signup/reset endpoints often, so from a serverless host these usually
- * resolve to "unknown" -- which is honest evidence, not a failure. We probe the
- * address's own domain reachability as a cheap, real liveness check and leave the
- * per-platform result "unknown" rather than guessing.
- */
-async function probeCatalog(): Promise<PlatformHit[]> {
-  // Deliberately conservative: we do not ship fragile scraped endpoints that
-  // would fabricate results. Real per-platform hits come from Gravatar above;
-  // the catalog is surfaced via the (clearly labelled) simulated layer.
-  return CATALOG.map((platform) => ({ platform, status: 'unknown' as FootStatus, method: 'live-probe', simulated: false }));
-}
-
-/** Deterministic, clearly-labelled simulated footprint for demos. */
-function simulatedFootprint(email: string): PlatformHit[] {
-  const h = sha256(email.toLowerCase());
-  const bytes = Buffer.from(h, 'hex');
-  // count 3..8, stable per address
-  const count = 3 + (bytes[0] % 6);
-  const chosen: PlatformHit[] = [];
-  const used = new Set<number>();
-  let i = 1;
-  while (chosen.length < count && used.size < CATALOG.length) {
-    const idx = bytes[i % bytes.length] % CATALOG.length;
-    i += 1;
-    if (used.has(idx)) continue;
-    used.add(idx);
-    chosen.push({ platform: CATALOG[idx], status: 'registered', method: 'simulated-dataset', simulated: true });
-  }
-  return chosen;
-}
-
-/** Merge sources; a real result always wins over a simulated one for a platform. */
+/** Merge sources; de-duplicates a platform seen from more than one source. */
 function merge(...lists: PlatformHit[][]): PlatformHit[] {
   const byName = new Map<string, PlatformHit>();
   for (const list of lists) {
@@ -270,7 +244,9 @@ function merge(...lists: PlatformHit[][]): PlatformHit[] {
 async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> {
   const addr = (email.from_addr || '').trim().toLowerCase();
   if (!addr || !addr.includes('@')) {
-    return [unavailable(caseId, Analyzer.M8_FOOTPRINT, 'sender_email_footprint', 'no sender address to profile')];
+    // No address to profile. M8 stays NEUTRAL (CLEAR, weight 0) rather than
+    // UNAVAILABLE, so a missing footprint never adds points nor lowers confidence.
+    return [clear(caseId, Analyzer.M8_FOOTPRINT, 'sender_no_footprint', { reason: 'no sender address to profile' })];
   }
   const domain = addr.split('@').pop() as string;
   const out: Evidence[] = [];
@@ -283,36 +259,32 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
     }));
   }
 
-  // 2) gather footprint from the enabled sources
+  // 2) gather footprint from REAL sources only (no simulated/demo data):
+  //    Gravatar (avatar + linked accounts) and data-breach records, where a
+  //    breach on a platform is proof the address had an account there.
   const online = config.footprintOnline();
-  const demo = config.footprintDemo();
   const sources: PlatformHit[][] = [];
-  let probedLive = false;
 
   let breach: BreachInfo | null = null;
   let breachSource: string | null = null;
   if (online) {
     sources.push(await checkGravatar(addr));
-    sources.push(await probeCatalog());
     // real breach lookup: HIBP when a key is set, otherwise the free XposedOrNot
     breach = await checkHIBP(addr);
     if (breach) breachSource = 'hibp';
     if (!breach) { breach = await checkXposedOrNot(addr); if (breach) breachSource = 'xposedornot'; }
-    probedLive = true;
+    // breach names -> real platform registrations
+    if (breach && breach.breaches.length) sources.push(breachPlatforms(breach.breaches));
   }
-  if (demo) sources.push(simulatedFootprint(addr));
-  // fill the breach/age with the labelled demo summary when a real lookup found
-  // nothing (e.g. synthetic sample addresses), so the demo stays illustrative
-  if (demo && (!breach || breach.count === 0)) { breach = simulatedBreach(addr); breachSource = 'demo'; }
 
-  const all = merge(...sources);
-  const registered = all.filter((h) => h.status === 'registered');
-  const realRegistered = registered.filter((h) => !h.simulated);
-
-  // nothing could run: offline and demo disabled
-  if (!online && !demo) {
-    return [...out, unavailable(caseId, Analyzer.M8_FOOTPRINT, 'sender_email_footprint', 'footprint checks disabled (offline)')];
+  // No network to check the footprint. M8 stays NEUTRAL (CLEAR, weight 0) rather
+  // than UNAVAILABLE: not finding a footprint must never add points nor lower
+  // confidence -- the absence of a credit is the only effect. (Disposable ran above.)
+  if (!online) {
+    return [...out, clear(caseId, Analyzer.M8_FOOTPRINT, 'sender_no_footprint', { reason: 'footprint check needs network access' })];
   }
+
+  const registered = merge(...sources).filter((h) => h.status === 'registered');
 
   const detail = {
     email: addr,
@@ -320,13 +292,13 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
     webmail: WEBMAIL.has(domain),
     disposable: DISPOSABLE.has(domain),
     registered_count: registered.length,
-    real_count: realRegistered.length,
-    registered: registered.map((h) => ({ platform: h.platform, method: h.method, simulated: h.simulated })),
+    real_count: registered.length,
+    registered: registered.map((h) => ({ platform: h.platform, method: h.method, simulated: false })),
     platforms: registered.map((h) => h.platform),
-    probed_live: probedLive,
-    includes_simulated: registered.some((h) => h.simulated),
+    probed_live: true,
+    includes_simulated: false,
     breach: breachDetail(breach, breachSource),
-    sources: { gravatar: online, live_probe: online, breach: breachSource, simulated_dataset: demo },
+    sources: { gravatar: online, breach: breachSource },
   };
 
   if (registered.length > 0) {
@@ -337,18 +309,17 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
     out.push(clear(caseId, Analyzer.M8_FOOTPRINT, 'sender_no_footprint', detail));
   }
 
-  // ---- legitimacy credits (negative-weight; REAL evidence only) ----
+  // ---- legitimacy credits (negative-weight; all evidence is real) ----
   // An aged, widely-registered address is strong evidence of a genuine sender.
-  // Simulated/demo data never earns credit — only real Gravatar/breach evidence.
-  const realBreach = breach && !breach.simulated ? breach : null;
+  const realBreach = breach && breach.count > 0 ? breach : null;
   const earliestYear = realBreach?.earliest ? Number(realBreach.earliest.slice(0, 4)) : null;
   const ageYears = earliestYear ? Math.max(0, new Date().getUTCFullYear() - earliestYear) : null;
-  const establishedEvidence = realRegistered.length >= 3 || (!!realBreach && realBreach.count >= 5);
+  const establishedEvidence = registered.length >= 3 || (!!realBreach && realBreach.count >= 5);
   const aged = ageYears != null && ageYears >= 2;
   if (establishedEvidence || aged) {
     const creditDetail = {
       email: addr,
-      real_platforms: realRegistered.length,
+      real_platforms: registered.length,
       breach_count: realBreach?.count ?? 0,
       in_use_since: earliestYear,
       age_years: ageYears,
@@ -364,4 +335,4 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
 
 register(Analyzer.M8_FOOTPRINT, analyze);
 
-export { analyze, DISPOSABLE, CATALOG, simulatedFootprint };
+export { analyze, DISPOSABLE, breachPlatforms };

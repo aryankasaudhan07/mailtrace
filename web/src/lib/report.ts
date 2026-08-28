@@ -334,13 +334,11 @@ export async function buildReportPdf(rec: CaseRecord): Promise<Uint8Array> {
       platforms.forEach((p, i) => {
         const px = MARGIN + (i % cols) * (colW + 16);
         if (i % cols === 0 && i > 0) y -= 16;
-        const dotCol = p.simulated ? MUTED : TEAL2;
-        page.drawCircle({ x: px + 4, y: y - 8, size: 3, color: dotCol });
-        const label = p.platform + (p.simulated ? '  (demo)' : '');
-        page.drawText(ellip(label, 8.5, bold, colW - 20), { x: px + 14, y: y - 11, size: 8.5, font: bold, color: INK });
+        page.drawCircle({ x: px + 4, y: y - 8, size: 3, color: TEAL2 });
+        page.drawText(ellip(p.platform, 8.5, bold, colW - 20), { x: px + 14, y: y - 11, size: 8.5, font: bold, color: INK });
       });
       y -= 18;
-      if (footDetail.includes_simulated) para('Entries marked (demo) are from the labelled simulated dataset; the rest are live results (Gravatar / linked accounts).', { size: 7.5, color: MUTED, gap: 3 });
+      para('Verified from real evidence: Gravatar profile links and data-breach records (an address in a platform breach had an account there).', { size: 7.5, color: MUTED, gap: 3 });
     } else {
       para('No public account footprint found for this sender address.', { size: 9, color: MUTED, gap: 3 });
     }

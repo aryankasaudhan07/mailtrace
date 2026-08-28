@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { analyze } from './m8_footprint';
+import { analyze, breachPlatforms } from './m8_footprint';
 import { Analyzer, Status } from '../schemas/evidence';
 import type { ParsedEmail } from '../schemas/email';
 
@@ -11,17 +11,16 @@ function email(from: string | null): ParsedEmail {
 const CID = 'case-m8';
 
 beforeEach(() => {
-  // deterministic + offline: no network, use the labelled simulated dataset
+  // offline: no network. M8 uses only REAL sources, so with no network there is
+  // no footprint to report (the disposable check still runs offline).
   process.env.M8_ENUM_ONLINE = '0';
-  process.env.M8_DEMO = '1';
 });
 afterEach(() => {
   delete process.env.M8_ENUM_ONLINE;
-  delete process.env.M8_DEMO;
 });
 
-describe('M8 sender email footprint', () => {
-  it('flags a disposable / temp-mail sender domain (TRIGGERED, scored)', async () => {
+describe('M8 sender email footprint (real sources only)', () => {
+  it('flags a disposable / temp-mail sender domain (offline, scored)', async () => {
     const ev = await analyze(CID, email('attacker@mailinator.com'));
     const disp = ev.find((e) => e.signal === 'disposable_sender_domain');
     expect(disp?.status).toBe(Status.TRIGGERED);
@@ -34,65 +33,49 @@ describe('M8 sender email footprint', () => {
     expect(ev.some((e) => e.signal === 'disposable_sender_domain')).toBe(false);
   });
 
-  it('produces a footprint with the (labelled) simulated dataset', async () => {
+  it('stays NEUTRAL (CLEAR, no fabricated footprint) when there is no network', async () => {
     const ev = await analyze(CID, email('alice@gmail.com'));
-    const foot = ev.find((e) => e.signal === 'sender_email_footprint');
-    expect(foot?.status).toBe(Status.CLEAR);
-    const d = foot!.detail as { registered_count: number; platforms: string[]; includes_simulated: boolean };
-    expect(d.registered_count).toBeGreaterThan(0);
-    expect(d.includes_simulated).toBe(true);
-    expect(Array.isArray(d.platforms)).toBe(true);
+    const foot = ev.find((e) => e.signal === 'sender_email_footprint' || e.signal === 'sender_no_footprint');
+    expect(foot?.status).toBe(Status.CLEAR); // neutral -> never lowers confidence / adds points
+    // and M8 emits no UNAVAILABLE (which would penalise confidence)
+    expect(ev.some((e) => e.status === Status.UNAVAILABLE)).toBe(false);
   });
 
-  it('is deterministic — same address yields the same simulated footprint', async () => {
-    const a = await analyze(CID, email('someone@example.com'));
-    const b = await analyze(CID, email('someone@example.com'));
-    const pa = (a.find((e) => e.signal === 'sender_email_footprint')!.detail as { platforms: string[] }).platforms;
-    const pb = (b.find((e) => e.signal === 'sender_email_footprint')!.detail as { platforms: string[] }).platforms;
-    expect(pa).toEqual(pb);
-  });
-
-  it('does NOT grant a legitimacy credit for simulated / demo data', async () => {
-    // demo mode, no live evidence -> only simulated footprint/breach -> no credit
+  it('grants NO legitimacy credit without real evidence (offline)', async () => {
     const ev = await analyze(CID, email('alice@gmail.com'));
     expect(ev.some((e) => ['established_sender_identity', 'known_footprint_sender'].includes(e.signal))).toBe(false);
   });
 
-  it('returns UNAVAILABLE when offline and the demo dataset is disabled', async () => {
-    process.env.M8_DEMO = '0';
-    const ev = await analyze(CID, email('alice@gmail.com'));
-    const foot = ev.find((e) => e.analyzer === Analyzer.M8_FOOTPRINT);
-    expect(foot?.status).toBe(Status.UNAVAILABLE);
-  });
-
-  it('includes a (labelled, deterministic) HIBP breach + age estimate in demo mode', async () => {
-    const a = await analyze(CID, email('someone@example.com'));
-    const b = await analyze(CID, email('someone@example.com'));
-    const da = a.find((e) => e.signal === 'sender_email_footprint' || e.signal === 'sender_no_footprint')!.detail as { breach: { checked: boolean; simulated: boolean; count: number; established_since: string; min_age_years: number } };
-    const db = b.find((e) => e.signal === 'sender_email_footprint' || e.signal === 'sender_no_footprint')!.detail as typeof da;
-    expect(da.breach.checked).toBe(true);
-    expect(da.breach.simulated).toBe(true);
-    expect(da.breach.count).toBeGreaterThan(0);
-    expect(Number(da.breach.established_since)).toBeGreaterThanOrEqual(2012);
-    expect(da.breach.min_age_years).toBeGreaterThanOrEqual(0);
-    expect(db.breach).toEqual(da.breach); // deterministic
-  });
-
-  it('omits breach data when offline and demo is disabled', async () => {
-    process.env.M8_DEMO = '0';
-    const ev = await analyze(CID, email('alice@gmail.com'));
-    const foot = ev.find((e) => e.analyzer === Analyzer.M8_FOOTPRINT);
-    // offline + no demo -> UNAVAILABLE, no breach enrichment
-    expect(foot?.status).toBe(Status.UNAVAILABLE);
-  });
-
-  it('is UNAVAILABLE when there is no sender address', async () => {
+  it('stays NEUTRAL (CLEAR) when there is no sender address', async () => {
     const ev = await analyze(CID, email(null));
     expect(ev).toHaveLength(1);
-    expect(ev[0].status).toBe(Status.UNAVAILABLE);
+    expect(ev[0].status).toBe(Status.CLEAR);
+    expect(ev[0].signal).toBe('sender_no_footprint');
   });
 
   it('never throws — always returns evidence', async () => {
     await expect(analyze(CID, email('weird-no-at-sign'))).resolves.toBeInstanceOf(Array);
+  });
+});
+
+describe('breachPlatforms — real breach names become platform registrations', () => {
+  it('keeps real platforms and drops combolist / data-broker dumps', () => {
+    const hits = breachPlatforms([
+      'LinkedIn', 'Adobe', 'Canva', 'Collection1', 'AntiPublic',
+      'People Data Labs', 'Dropbox', 'LinkedIn', 'Naz.API', 'Twitter',
+    ]);
+    const platforms = hits.map((h) => h.platform);
+    expect(platforms).toContain('LinkedIn');
+    expect(platforms).toContain('Adobe');
+    expect(platforms).toContain('Dropbox');
+    expect(platforms).toContain('Twitter');
+    // aggregators excluded
+    expect(platforms).not.toContain('Collection1');
+    expect(platforms).not.toContain('AntiPublic');
+    expect(platforms).not.toContain('People Data Labs');
+    expect(platforms).not.toContain('Naz.API');
+    // de-duplicated + all real
+    expect(platforms.filter((p) => p === 'LinkedIn')).toHaveLength(1);
+    expect(hits.every((h) => h.simulated === false && h.status === 'registered')).toBe(true);
   });
 });
