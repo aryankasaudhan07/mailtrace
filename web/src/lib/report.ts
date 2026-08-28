@@ -312,8 +312,15 @@ export async function buildReportPdf(rec: CaseRecord): Promise<Uint8Array> {
     disposable?: boolean; includes_simulated?: boolean; real_count?: number;
   };
   const platforms = footDetail.registered ?? [];
+  const breach = (footDetail as { breach?: { checked?: boolean; established_since?: string | null; min_age_years?: number | null; count?: number; names?: string[]; simulated?: boolean } }).breach;
   if (foot || rec.evidence.some((e) => e.signal === 'sender_no_footprint')) {
     heading('Sender email footprint');
+    if (breach?.checked) {
+      const since = breach.established_since ? `In use since ${breach.established_since} or earlier${breach.min_age_years != null ? ` (~${breach.min_age_years}y old)` : ''}` : 'Age unknown';
+      const br = `${breach.count ?? 0} known breach${breach.count === 1 ? '' : 'es'}${breach.names?.length ? `: ${breach.names.join(', ')}` : ''}`;
+      para(`${since}  ·  ${br}${breach.simulated ? '  (demo data)' : ''}`, { size: 8.5, color: INK, gap: 4 });
+      y -= 2;
+    }
     if (platforms.length) {
       para(`This address is registered on ${platforms.length} platform(s):`, { size: 9, color: INK, gap: 4 });
       y -= 2;

@@ -109,6 +109,78 @@ async function checkGravatar(email: string): Promise<PlatformHit[]> {
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+export interface BreachInfo {
+  count: number;
+  breaches: string[];
+  earliest: string | null; // YYYY-MM-DD
+  latest: string | null;
+  simulated: boolean;
+}
+
+/** HaveIBeenPwned breach lookup (real). Needs HIBP_API_KEY; degrades to null. */
+async function checkHIBP(email: string): Promise<BreachInfo | null> {
+  const key = config.hibpKey();
+  if (!key) return null;
+  try {
+    const r = await fetch(
+      `https://haveibeenpwned.com/api/v3/breachedaccount/${encodeURIComponent(email)}?truncateResponse=false`,
+      { signal: timeoutSignal(6000), headers: { 'hibp-api-key': key, 'user-agent': 'Mailtrace-Footprint/1.0' } },
+    );
+    if (r.status === 404) return { count: 0, breaches: [], earliest: null, latest: null, simulated: false };
+    if (!r.ok) return null; // rate limited / auth error -> no data, don't guess
+    const arr = (await r.json()) as Array<{ Name: string; Title?: string; BreachDate?: string }>;
+    const dates = arr.map((b) => b.BreachDate).filter((d): d is string => !!d).sort();
+    return {
+      count: arr.length,
+      breaches: arr.map((b) => b.Title || b.Name).slice(0, 12),
+      earliest: dates[0] ?? null,
+      latest: dates[dates.length - 1] ?? null,
+      simulated: false,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Real breach names, only used to make the labelled DEMO summary look plausible.
+const DEMO_BREACHES = ['Collection1', 'LinkedIn', 'Adobe', 'Canva', 'Dropbox', 'MyFitnessPal', 'Chegg', 'Twitter', 'Wattpad', 'Deezer', 'Ticketmaster'];
+
+/** Deterministic, clearly-labelled simulated breach summary for demos. */
+function simulatedBreach(email: string): BreachInfo {
+  const b = Buffer.from(sha256(email.toLowerCase()), 'hex');
+  const count = 1 + (b[2] % 7); // 1..7
+  const year = 2012 + (b[3] % 11); // 2012..2022
+  const month = 1 + (b[4] % 12);
+  const earliest = `${year}-${String(month).padStart(2, '0')}-01`;
+  const names: string[] = [];
+  const used = new Set<number>();
+  let i = 5;
+  while (names.length < count && used.size < DEMO_BREACHES.length) {
+    const idx = b[i % b.length] % DEMO_BREACHES.length;
+    i += 1;
+    if (used.has(idx)) continue;
+    used.add(idx);
+    names.push(DEMO_BREACHES[idx]);
+  }
+  return { count, breaches: names, earliest, latest: earliest, simulated: true };
+}
+
+/** Fold a BreachInfo into the report-friendly shape (adds age estimate). */
+function breachDetail(b: BreachInfo | null) {
+  if (!b) return { checked: false };
+  const year = b.earliest ? Number(b.earliest.slice(0, 4)) : null;
+  return {
+    checked: true,
+    simulated: b.simulated,
+    count: b.count,
+    earliest: b.earliest,
+    latest: b.latest,
+    established_since: year ? String(year) : null,
+    min_age_years: year ? Math.max(0, new Date().getUTCFullYear() - year) : null,
+    names: b.breaches,
+  };
+}
+
 /**
  * Live platform probing. Most consumer platforms block datacenter IPs and change
  * their signup/reset endpoints often, so from a serverless host these usually
@@ -181,12 +253,17 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
   const sources: PlatformHit[][] = [];
   let probedLive = false;
 
+  let breach: BreachInfo | null = null;
   if (online) {
     sources.push(await checkGravatar(addr));
     sources.push(await probeCatalog());
+    breach = await checkHIBP(addr); // real breach lookup when HIBP_API_KEY is set
     probedLive = true;
   }
-  if (demo) sources.push(simulatedFootprint(addr));
+  if (demo) {
+    sources.push(simulatedFootprint(addr));
+    if (!breach) breach = simulatedBreach(addr);
+  }
 
   const all = merge(...sources);
   const registered = all.filter((h) => h.status === 'registered');
@@ -208,7 +285,8 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
     platforms: registered.map((h) => h.platform),
     probed_live: probedLive,
     includes_simulated: registered.some((h) => h.simulated),
-    sources: { gravatar: online, live_probe: online, simulated_dataset: demo },
+    breach: breachDetail(breach),
+    sources: { gravatar: online, live_probe: online, hibp: online && !!config.hibpKey(), simulated_dataset: demo },
   };
 
   if (registered.length > 0) {

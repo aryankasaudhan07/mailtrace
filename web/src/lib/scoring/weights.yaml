@@ -10,7 +10,7 @@
 #
 # Owner: Track E
 
-version: "1.4.0"
+version: "1.4.1"
 
 bands:
   benign: [0, 24]
@@ -279,9 +279,11 @@ signals:
     label: "Sender email account footprint"
     rationale: >
       Informational only. Lists the platforms where the sender's address is
-      already registered (Gravatar linked accounts, live probes, demo dataset).
-      A large footprint does NOT mean 'safe' -- an established mailbox can still be
-      compromised -- so this carries zero weight and is surfaced for the analyst.
+      already registered (Gravatar linked accounts, live probes, demo dataset)
+      plus HaveIBeenPwned breach exposure and a "in use since >= Y" age floor.
+      A large footprint / old address does NOT mean 'safe' -- an established
+      mailbox is exactly what account-takeover and thread-hijacking abuse -- so
+      this carries zero weight and is surfaced for the analyst as context.
 
   sender_no_footprint:
     weight: 0

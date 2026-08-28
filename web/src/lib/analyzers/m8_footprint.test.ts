@@ -59,6 +59,27 @@ describe('M8 sender email footprint', () => {
     expect(foot?.status).toBe(Status.UNAVAILABLE);
   });
 
+  it('includes a (labelled, deterministic) HIBP breach + age estimate in demo mode', async () => {
+    const a = await analyze(CID, email('someone@example.com'));
+    const b = await analyze(CID, email('someone@example.com'));
+    const da = a.find((e) => e.signal === 'sender_email_footprint' || e.signal === 'sender_no_footprint')!.detail as { breach: { checked: boolean; simulated: boolean; count: number; established_since: string; min_age_years: number } };
+    const db = b.find((e) => e.signal === 'sender_email_footprint' || e.signal === 'sender_no_footprint')!.detail as typeof da;
+    expect(da.breach.checked).toBe(true);
+    expect(da.breach.simulated).toBe(true);
+    expect(da.breach.count).toBeGreaterThan(0);
+    expect(Number(da.breach.established_since)).toBeGreaterThanOrEqual(2012);
+    expect(da.breach.min_age_years).toBeGreaterThanOrEqual(0);
+    expect(db.breach).toEqual(da.breach); // deterministic
+  });
+
+  it('omits breach data when offline and demo is disabled', async () => {
+    process.env.M8_DEMO = '0';
+    const ev = await analyze(CID, email('alice@gmail.com'));
+    const foot = ev.find((e) => e.analyzer === Analyzer.M8_FOOTPRINT);
+    // offline + no demo -> UNAVAILABLE, no breach enrichment
+    expect(foot?.status).toBe(Status.UNAVAILABLE);
+  });
+
   it('is UNAVAILABLE when there is no sender address', async () => {
     const ev = await analyze(CID, email(null));
     expect(ev).toHaveLength(1);

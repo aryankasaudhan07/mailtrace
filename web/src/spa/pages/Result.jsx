@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   Anchor, ShieldAlert, ShieldCheck, Link2, Paperclip, Mail, Globe, FileText, FileWarning,
-  Fingerprint, Network, FileSearch, Loader2, CheckCircle2, AlertTriangle, ArrowRight,
+  Fingerprint, Network, FileSearch, Loader2, CheckCircle2, AlertTriangle, ArrowRight, Clock,
 } from 'lucide-react'
 import PageHead from '../components/PageHead.jsx'
 import ScoreGauge from '../components/ScoreGauge.jsx'
@@ -265,6 +265,20 @@ export default function Result() {
           {c.footprint.disposable && (
             <div className="sid-note bad" style={{ marginBottom: 14 }}>
               <AlertTriangle size={15} /> Disposable / temporary-inbox sender domain — typical of throwaway attacker accounts.
+            </div>
+          )}
+          {c.footprint.breach?.checked && (
+            <div className="fp-meta">
+              {c.footprint.breach.established_since && (
+                <div className="fp-stat">
+                  <Clock size={14} />
+                  <span>In use since <b>≥ {c.footprint.breach.established_since}</b>{c.footprint.breach.min_age_years != null && ` (~${c.footprint.breach.min_age_years}y)`} <span className="muted">— est. from breach data{c.footprint.breach.simulated ? ', demo' : ''}</span></span>
+                </div>
+              )}
+              <div className="fp-stat">
+                <ShieldAlert size={14} />
+                <span>{c.footprint.breach.count} known breach{c.footprint.breach.count === 1 ? '' : 'es'}{c.footprint.breach.names?.length ? <span className="muted"> — {c.footprint.breach.names.join(', ')}</span> : ''}</span>
+              </div>
             </div>
           )}
           {c.footprint.registered_count > 0 ? (
