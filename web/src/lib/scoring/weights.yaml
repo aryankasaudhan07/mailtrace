@@ -10,7 +10,7 @@
 #
 # Owner: Track E
 
-version: "1.5.1"
+version: "1.5.3"
 
 bands:
   benign: [0, 24]
@@ -331,8 +331,10 @@ signals:
   known_footprint_sender:
     weight: -12
     analyzer: M8
-    label: "Sender address has real footprint or age"
+    label: "Sender address has a confirmed real account footprint"
     rationale: >
-      Partial legitimacy evidence -- the sender address has a real platform footprint
-      OR a 2+ year age floor, but not both. Smaller credit than a fully established
-      identity. Same forgery/diversion-only suppression as established_sender_identity.
+      The sender address is confirmed registered on at least one platform (live
+      account-existence probe or breach record) or has a 2+ year age floor -- but
+      not enough for a fully established identity. A throwaway attack address is
+      registered nowhere, so any confirmed real account is legitimacy evidence.
+      Same forgery/diversion-only suppression as established_sender_identity.

@@ -122,3 +122,13 @@
 .fp-stat { display: flex; align-items: center; gap: 9px; font-size: .85rem; color: var(--text); }
 .fp-stat svg { color: var(--violet); flex-shrink: 0; }
 .fp-stat .muted { color: var(--text-3); }
+
+/* M8 live account-existence checks */
+.fp-probes { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line); }
+.fp-probes-h { font-size: .74rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--text-3); margin-bottom: 9px; }
+.fp-probes-row { display: flex; flex-wrap: wrap; gap: 7px; }
+.fp-probe { display: inline-flex; align-items: center; gap: 5px; font-size: .78rem; font-weight: 600;
+  border-radius: 7px; padding: 4px 10px; border: 1px solid var(--line-2); }
+.fp-probe.registered { color: var(--low); background: var(--low-bg); border-color: transparent; }
+.fp-probe.not_registered { color: var(--text-3); }
+.fp-probe.unknown { color: var(--med); }

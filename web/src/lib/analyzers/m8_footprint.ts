@@ -21,10 +21,15 @@
  *                                  had a LinkedIn account). Combolists / data
  *                                  brokers are filtered out. Also gives the age
  *                                  floor ("in use since <earliest breach year>").
+ *   4. Live account-existence   -- REAL Holehe-style probes of platforms whose
+ *      probes                      public signup/reset endpoints answer honestly
+ *                                  (Chess.com, Spotify, Duolingo, WordPress,
+ *                                  Adobe, Plurk).
  *
- * We do NOT live-probe Instagram/LinkedIn/etc. signup endpoints: they block
- * datacenter IPs and would return "unknown" or need fragile scraping. Breach
- * records are the reliable, real proof of platform presence instead.
+ * LinkedIn / Instagram / X / Threads / Quora hard-block automated checks
+ * (429 / anti-bot / login required) and cannot be probed from a server -- that is
+ * a real limitation of every tool, not a shortcut. From a datacenter IP (Vercel)
+ * even the working probes may be blocked and return "unknown".
  *
  * Never raises: every network path is guarded and degrades to UNAVAILABLE.
  */
@@ -117,6 +122,110 @@ async function checkGravatar(email: string): Promise<PlatformHit[]> {
 }
 
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+const BROWSER_UA =
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36';
+
+/**
+ * REAL account-enumeration probes (the Holehe technique): hit each platform's
+ * public signup/reset endpoint and read whether the email is already registered.
+ * Only platforms that answer a datacenter request are here -- LinkedIn / Instagram
+ * / X / Threads / Quora hard-block automated checks (429 / anti-bot / login
+ * required) and simply cannot be checked from a server. Each probe is guarded and
+ * degrades to 'unknown'.
+ */
+interface LiveProbe { name: string; check: (email: string) => Promise<FootStatus>; }
+
+const LIVE_PROBES: LiveProbe[] = [
+  {
+    name: 'Chess.com',
+    check: async (email) => {
+      const r = await fetch(`https://www.chess.com/callback/email/available?email=${encodeURIComponent(email)}`,
+        { signal: timeoutSignal(6000), headers: { 'user-agent': BROWSER_UA } });
+      if (!r.ok) return 'unknown';
+      const d = (await r.json()) as { isEmailAvailable?: boolean };
+      if (typeof d.isEmailAvailable !== 'boolean') return 'unknown';
+      return d.isEmailAvailable ? 'not_registered' : 'registered';
+    },
+  },
+  {
+    name: 'Spotify',
+    check: async (email) => {
+      const r = await fetch(`https://spclient.wg.spotify.com/signup/public/v1/account?validate=1&email=${encodeURIComponent(email)}`,
+        { signal: timeoutSignal(6000), headers: { 'user-agent': BROWSER_UA } });
+      if (!r.ok) return 'unknown';
+      const d = (await r.json()) as { status?: number; errors?: { email?: string } };
+      if (d.errors?.email || d.status === 20) return 'registered';
+      if (d.status === 1) return 'not_registered';
+      return 'unknown';
+    },
+  },
+  {
+    name: 'Duolingo',
+    check: async (email) => {
+      const r = await fetch(`https://www.duolingo.com/2017-06-30/users?email=${encodeURIComponent(email)}`,
+        { signal: timeoutSignal(6000), headers: { 'user-agent': BROWSER_UA } });
+      if (!r.ok) return 'unknown';
+      const d = (await r.json()) as { users?: unknown[] };
+      if (!Array.isArray(d.users)) return 'unknown';
+      return d.users.length > 0 ? 'registered' : 'not_registered';
+    },
+  },
+  {
+    name: 'WordPress',
+    check: async (email) => {
+      const r = await fetch(`https://public-api.wordpress.com/rest/v1.1/users/${encodeURIComponent(email)}/auth-options`,
+        { signal: timeoutSignal(6000), headers: { 'user-agent': BROWSER_UA } });
+      const d = (await r.json().catch(() => null)) as { error?: string } | null;
+      if (!d) return 'unknown';
+      if (d.error === 'unknown_user') return 'not_registered';
+      if (r.ok && !d.error) return 'registered';
+      return 'unknown';
+    },
+  },
+  {
+    name: 'Adobe',
+    check: async (email) => {
+      const r = await fetch('https://auth.services.adobe.com/signin/v2/users/accounts', {
+        method: 'POST', signal: timeoutSignal(6000),
+        headers: { 'user-agent': BROWSER_UA, 'content-type': 'application/json', 'x-ims-clientid': 'adobedotcom2' },
+        body: JSON.stringify({ username: email }),
+      });
+      if (!r.ok) return 'unknown';
+      const d = (await r.json().catch(() => null)) as unknown[] | null;
+      if (!Array.isArray(d)) return 'unknown';
+      return d.length > 0 ? 'registered' : 'not_registered';
+    },
+  },
+  {
+    name: 'Plurk',
+    check: async (email) => {
+      const r = await fetch('https://www.plurk.com/Users/isEmailFound', {
+        method: 'POST', signal: timeoutSignal(6000),
+        headers: { 'user-agent': BROWSER_UA, 'content-type': 'application/x-www-form-urlencoded' },
+        body: `email=${encodeURIComponent(email)}`,
+      });
+      if (!r.ok) return 'unknown';
+      const t = (await r.text()).trim().toLowerCase();
+      if (t === 'true') return 'registered';
+      if (t === 'false') return 'not_registered';
+      return 'unknown';
+    },
+  },
+];
+
+/** Run every live probe concurrently; a thrown/blocked probe becomes 'unknown'. */
+async function runLiveProbes(email: string): Promise<PlatformHit[]> {
+  const settled = await Promise.allSettled(
+    LIVE_PROBES.map(async (p) => ({ platform: p.name, status: await p.check(email).catch((): FootStatus => 'unknown') })),
+  );
+  return settled.map((s, i) => ({
+    platform: LIVE_PROBES[i].name,
+    status: s.status === 'fulfilled' ? s.value.status : 'unknown',
+    method: 'live-probe',
+    simulated: false,
+  }));
+}
 
 export interface BreachInfo {
   count: number;
@@ -267,14 +376,23 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
 
   let breach: BreachInfo | null = null;
   let breachSource: string | null = null;
+  let probeResults: PlatformHit[] = [];
   if (online) {
-    sources.push(await checkGravatar(addr));
+    // run Gravatar, breach lookup and the live platform probes concurrently
+    const [grav, hibp, probes] = await Promise.all([
+      checkGravatar(addr),
+      checkHIBP(addr),
+      runLiveProbes(addr),
+    ]);
+    sources.push(grav);
+    probeResults = probes;
     // real breach lookup: HIBP when a key is set, otherwise the free XposedOrNot
-    breach = await checkHIBP(addr);
+    breach = hibp;
     if (breach) breachSource = 'hibp';
     if (!breach) { breach = await checkXposedOrNot(addr); if (breach) breachSource = 'xposedornot'; }
-    // breach names -> real platform registrations
     if (breach && breach.breaches.length) sources.push(breachPlatforms(breach.breaches));
+    // live-probe hits (real account-existence confirmations)
+    sources.push(probes.filter((p) => p.status === 'registered'));
   }
 
   // No network to check the footprint. M8 stays NEUTRAL (CLEAR, weight 0) rather
@@ -297,8 +415,10 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
     platforms: registered.map((h) => h.platform),
     probed_live: true,
     includes_simulated: false,
+    // full live-probe transparency: what was checked and the real result
+    probes: probeResults.map((p) => ({ platform: p.platform, status: p.status })),
     breach: breachDetail(breach, breachSource),
-    sources: { gravatar: online, breach: breachSource },
+    sources: { gravatar: online, breach: breachSource, live_probe: online },
   };
 
   if (registered.length > 0) {
@@ -314,19 +434,21 @@ async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> 
   const realBreach = breach && breach.count > 0 ? breach : null;
   const earliestYear = realBreach?.earliest ? Number(realBreach.earliest.slice(0, 4)) : null;
   const ageYears = earliestYear ? Math.max(0, new Date().getUTCFullYear() - earliestYear) : null;
+  const anyRealFootprint = registered.length >= 1 || !!realBreach; // any confirmed real account
   const establishedEvidence = registered.length >= 3 || (!!realBreach && realBreach.count >= 5);
   const aged = ageYears != null && ageYears >= 2;
-  if (establishedEvidence || aged) {
+  if (anyRealFootprint || aged) {
+    const strong = establishedEvidence && aged;
     const creditDetail = {
       email: addr,
       real_platforms: registered.length,
       breach_count: realBreach?.count ?? 0,
       in_use_since: earliestYear,
       age_years: ageYears,
-      established: establishedEvidence && aged,
-      note: 'Aged / widely-registered real identity — attackers use fresh throwaways, not long-lived widely-registered addresses. Credit is cancelled if the message is forged or diverts money.',
+      established: strong,
+      note: 'Real, confirmed account footprint — a throwaway attack address is registered nowhere. Credit is cancelled if the message is forged or diverts money.',
     };
-    const signal = establishedEvidence && aged ? 'established_sender_identity' : 'known_footprint_sender';
+    const signal = strong ? 'established_sender_identity' : 'known_footprint_sender';
     out.push(triggered(caseId, Analyzer.M8_FOOTPRINT, signal, creditDetail));
   }
 

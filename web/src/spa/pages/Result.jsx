@@ -288,17 +288,32 @@ export default function Result() {
             <>
               <div className="fp-grid">
                 {c.footprint.registered.map((p, i) => (
-                  <span className="fp-chip" key={i} title={p.method === 'breach-record' ? 'from a data-breach record' : p.method}>
+                  <span className="fp-chip" key={i} title={p.method === 'breach-record' ? 'from a data-breach record' : p.method === 'live-probe' ? 'confirmed via live account check' : p.method}>
                     <span className="fp-dot" />{p.platform}
                   </span>
                 ))}
               </div>
               <div className="muted small" style={{ marginTop: 12 }}>
-                Platforms are verified from real evidence — Gravatar profile links and data-breach records (an address in a platform's breach had an account there).
+                Verified from real evidence — live account-existence checks, Gravatar links, and data-breach records (an address in a platform's breach had an account there).
               </div>
             </>
           ) : (
-            <div className="muted center" style={{ padding: 18 }}>No public account footprint found for this address.</div>
+            <div className="muted center" style={{ padding: 18 }}>No confirmed account footprint found for this address.</div>
+          )}
+          {Array.isArray(c.footprint.probes) && c.footprint.probes.length > 0 && (
+            <div className="fp-probes">
+              <div className="fp-probes-h">Live account checks</div>
+              <div className="fp-probes-row">
+                {c.footprint.probes.map((p, i) => (
+                  <span className={'fp-probe ' + p.status} key={i}>
+                    {p.status === 'registered' ? '✓' : p.status === 'not_registered' ? '✗' : '?'} {p.platform}
+                  </span>
+                ))}
+              </div>
+              <div className="muted small" style={{ marginTop: 8 }}>
+                LinkedIn, Instagram, X and Threads hard-block automated checks (login/anti-bot), so they can't be verified from a server — a real limitation of every OSINT tool.
+              </div>
+            </div>
           )}
         </div>
       )}
