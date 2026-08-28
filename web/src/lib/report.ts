@@ -145,7 +145,9 @@ export async function buildReportPdf(rec: CaseRecord): Promise<Uint8Array> {
 
   // data
   const pos = v.contributions.filter((c) => c.points > 0).sort((a, b) => b.points - a.points);
-  const [cat, intent] = (pos[0] && TYPE[pos[0].signal]) || (pos.length ? ['Suspicious', 'Undetermined'] : ['Clean', 'None detected']);
+  const [cat, intent] = v.band === 'BENIGN'
+    ? ['Clean', 'None detected']
+    : ((pos[0] && TYPE[pos[0].signal]) || (pos.length ? ['Suspicious', 'Undetermined'] : ['Clean', 'None detected']));
   const barSev = (p: number) => (p >= 25 ? DEEP : p >= 15 ? CORAL : p >= 8 ? WARN : TEAL2);
 
   // ================= PAGE 1 — cover / executive =================
@@ -263,7 +265,9 @@ export async function buildReportPdf(rec: CaseRecord): Promise<Uint8Array> {
   kv('Date', rec.date ? new Date(rec.date).toUTCString() : '—');
   kv('Size', `${(rec.size_bytes / 1024).toFixed(1)} KB  ·  ${rec.body_format}`);
   const dom = (a: string | null) => (a && a.includes('@') ? a.split('@').pop()!.toLowerCase() : null);
-  const aligned = !(dom(rec.reply_to) && dom(rec.from_addr) && dom(rec.reply_to) !== dom(rec.from_addr));
+  const sameOrg = (a: string, b: string) => a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`);
+  const rt = dom(rec.reply_to), fr = dom(rec.from_addr);
+  const aligned = !(rt && fr && !sameOrg(rt, fr));
   need(26);
   page.drawRectangle({ x: MARGIN, y: y - 20, width: CONTENT_W, height: 20, color: tint(aligned ? TEAL2 : DEEP, 0.12) });
   page.drawCircle({ x: MARGIN + 12, y: y - 10, size: 3.5, color: aligned ? TEAL2 : DEEP });

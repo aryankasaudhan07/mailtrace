@@ -74,21 +74,87 @@ function cacheKey(subject: string, body: string): string {
   return createHash('sha256').update(`${subject}:${body.slice(0, 2000)}`).digest('hex');
 }
 
+// ---- heuristic intent detection ------------------------------------------
+// The naive substring version flagged legitimate transactional mail (OTP codes,
+// receipts, notifications) as phishing because it keyed on words those mails
+// legitimately use ("password", "login", "verify", "payment"). These patterns
+// require the *deceptive* phrasing instead, and OTP/transactional delivery is
+// recognised explicitly and exempted. Real phishing that dresses up as an OTP
+// is still caught by the deception lanes (auth failure, lookalike domain,
+// forged hop) — content vocabulary alone is deliberately not enough here.
+
+// Legit automated security flows: one-time-code delivery, password reset, email
+// verification, account activation — a code/link sent TO the user, not a request
+// to surrender credentials under threat.
+const LEGIT_FLOW_RE = /\b(one[-\s]?time (?:password|passcode|pin|code)|o\.?t\.?p\.?|verification code|security code|login code|access code|authentication code|confirmation code|passcode|your (?:code|otp) is|reset your password|password reset (?:code|link|request)?|verify your email(?: address)?|confirm your email(?: address)?|activate your account|email verification|complete your (?:sign[- ]?up|registration))\b/i;
+// Reassurance phrasing typical of legit automated mail (and largely absent from
+// threat-driven phishing).
+const OTP_REASSURE_RE = /\b(do not share|don'?t share|never (?:ask|share)|did ?n'?t request|didn'?t request|not request this|was ?n'?t you|weren'?t you|expires? in|valid for|this code|use this code|enter this code|this link (?:expires|will expire)|ignore this (?:email|message)|if this was ?n'?t you)\b/i;
+
+// Actual credential harvesting: hand over your secret, or an account-threat + "verify".
+const HARVEST_RE = /\b(?:enter|confirm|re-?enter|provide|submit|update|reset) (?:your |the )?(?:password|log[- ]?in credentials|account credentials|username and password|net[- ]?banking (?:password|credentials)|card (?:number|details|cvv))\b/i;
+const ACCOUNT_THREAT_RE = /\b(?:account (?:has been|is|was|will be)[^.\n]{0,20}?(?:suspended|locked|disabled|deactivated|blocked|compromised|restricted|terminated)|unusual (?:sign[- ]?in|log[- ]?in|activity|attempt)|verify (?:your )?(?:account|identity)(?:[^.\n]{0,14}?)(?:now|immediately|within|to avoid|to prevent|to continue|or your|or you)|confirm your (?:account|identity) to (?:avoid|prevent|continue|unlock|restore|regain)|re-?activate your account|unlock your account|restore (?:access|your account))\b/i;
+
+// Payment diversion (BEC): change/redirect where the money goes.
+function isPaymentDiversion(text: string): boolean {
+  return /\b(?:new|updated?|chang\w*|revis\w*|different|amended)\b[^.\n]{0,24}?\b(?:bank|banking|account|payment|remittance|beneficiary)\b[^.\n]{0,14}?\b(?:details|information|instructions|number|account|no)\b/i.test(text)
+    || /\b(?:remit|wire|transfer|send)\b[^.\n]{0,28}?\bto\b[^.\n]{0,18}?\b(?:new |different )?(?:bank )?account\b/i.test(text)
+    || /\bupdate (?:your |our |the )?(?:banking|payment|bank) (?:details|information|info|account)\b/i.test(text);
+}
+
+// Executive impersonation: an authority reference AND an urgent ask.
+const EXEC_RE = /\b(?:ceo|cfo|chief (?:executive|financial) officer|managing director|chairman|the president)\b/i;
+const EXEC_ASK_RE = /\b(?:urgent|asap|immediately|right away|as soon as possible|quick (?:task|favou?r|question)|are you (?:available|at your desk|around|there)|need you to|can you (?:handle|process|do|help)|on behalf of|gift card|wire (?:the )?(?:funds|payment|transfer))\b/i;
+
+// Prompt-injection payloads (the reason hidden text matters — CVE-2026-26133).
+const INJECTION_RE = /\b(ignore (?:all |any |the )?(?:previous|prior|above|earlier)(?: instructions?| messages?| prompts?| context)?|disregard (?:all |the |any |previous |above )|system (?:prompt|message|instruction|role)|you are (?:now )?(?:an?|a |the )|new instructions?\s*:|forget (?:everything|all|the above|previous)|do not (?:tell|mention|inform|reveal|disclose|output)|respond (?:only )?with|as an ai(?: language)?(?: model)?|prompt injection|override (?:the |your |previous |all ))|<\/?(?:system|user|assistant)>/i;
+
+// Hidden HTML text is only a finding when it carries an ATTACK payload — a
+// prompt-injection instruction, or hidden phishing/credential/payment content.
+// Benign hidden text (marketing preheader / preview / accessibility copy) is
+// normal in legitimate mail and must NOT be flagged.
+function hiddenIsSuspicious(hidden: string): boolean {
+  return INJECTION_RE.test(hidden)
+    || HARVEST_RE.test(hidden)
+    || ACCOUNT_THREAT_RE.test(hidden)
+    || isPaymentDiversion(hidden)
+    || /\b(gift ?card|bit ?coin|crypto ?(?:currency|wallet)|seed phrase|one[- ]?time (?:password|code)|verify your account|click here to (?:verify|confirm|log ?in|sign ?in|update)|wire (?:the )?(?:funds|payment|transfer)|(?:bank )?account (?:number|details)|your password)\b/i.test(hidden);
+}
+
+// True when a link points off the sender's own organisation (real image-based
+// phishing goes off-domain; a legit brand's image email links to itself).
+function hasOffDomainLink(fromDomain: string | null, linkDomains: string[]): boolean {
+  const f = (fromDomain || '').toLowerCase();
+  if (!f) return linkDomains.length > 0;
+  const sameOrg = (d: string) => d === f || d.endsWith(`.${f}`) || f.endsWith(`.${d}`);
+  return linkDomains.some((d) => !sameOrg(d.toLowerCase()));
+}
+
 function heuristic(subject: string, body: string): ContentResult {
   const text = canonical(`${subject} ${body}`); // fold homoglyphs / strip invisibles first
-  const phishingKw = [
-    'urgent', 'verify', 'confirm', 'click here', 'act now', 'suspended', 'account', 'update',
-    'password', 'credentials', 'wire', 'transfer', 'urgent action', 'immediately', 'required',
-    'validate', 'authenticate',
+  // A legit automated flow reassures and does NOT threaten the account. Any
+  // account-threat language means it is not a benign transactional message.
+  const threat = ACCOUNT_THREAT_RE.test(text);
+  const transactional = !threat && LEGIT_FLOW_RE.test(text) && (OTP_REASSURE_RE.test(text) || /\b\d{4,8}\b/.test(text));
+
+  // Soft phishing score from deceptive phrases only (kept well below the 0.6
+  // gate on its own; the specific intents below are what actually score).
+  const phishingPhrases = [
+    'click here', 'act now', 'suspended', 'verify your account', 'confirm your identity',
+    'update your password', 'unusual activity', 'avoid suspension', 'account will be locked',
+    'verify your identity', 'within 24 hours', 'permanently locked',
   ];
-  let score = phishingKw.filter((k) => text.includes(k)).length / Math.max(phishingKw.length, 1);
-  score = Math.min(0.95, score * 0.5);
+  let score = phishingPhrases.filter((k) => text.includes(k)).length / Math.max(phishingPhrases.length, 1);
+  score = transactional ? Math.min(score, 0.1) : Math.min(0.95, score);
+
   return {
     classifier_phishing_high: score,
-    credential_harvest_intent: ['password', 'verify account', 'confirm identity', 'login', 'credentials'].some((k) => text.includes(k)),
-    payment_diversion_intent: ['wire', 'transfer', 'bank', 'payment', 'invoice', 'update banking'].some((k) => text.includes(k)),
-    executive_impersonation: ['ceo', 'cfo', 'president', 'executive', 'director', 'urgent from'].some((k) => text.includes(k)),
-    reasoning: 'Fallback heuristic analysis (API unavailable)',
+    credential_harvest_intent: !transactional && (HARVEST_RE.test(text) || threat),
+    payment_diversion_intent: isPaymentDiversion(text),
+    executive_impersonation: EXEC_RE.test(text) && EXEC_ASK_RE.test(text),
+    reasoning: transactional
+      ? 'Transactional one-time-code delivery — a code sent to the recipient, not a credential request.'
+      : 'Fallback heuristic analysis (API unavailable)',
   };
 }
 
@@ -124,19 +190,18 @@ async function callGemini(subject: string, body: string): Promise<ContentResult 
 export async function analyze(caseId: string, email: ParsedEmail): Promise<Evidence[]> {
   const ev: Evidence[] = [];
 
-  // hidden-text detection
+  // hidden-text detection: only a finding when the hidden text carries an attack
+  // payload. Marketing preheader / preview text is hidden too, and is benign.
   const hidden = normalize(hiddenText(email.body_html));
-  const zwCount = (email.body_text || '').match(ZW_RE)?.length ?? 0;
   const hiddenAlnum = [...hidden].filter((c) => /[a-z0-9]/i.test(c)).length;
-  if (hiddenAlnum >= 15 || zwCount >= 5) {
+  if (hiddenAlnum >= 15 && hiddenIsSuspicious(hidden)) {
     ev.push(
       triggered(caseId, Analyzer.M4_CONTENT, 'hidden_text_mismatch', {
         hidden_char_count: hiddenAlnum,
-        zero_width_count: zwCount,
         hidden_sample: hidden.slice(0, 240),
         explanation:
-          'The HTML contains text hidden from the reader (display:none / font-size:0 / visibility:hidden / zero-width characters). ' +
-          'This is how prompt injection and message-spoofing payloads are smuggled past a human. The hidden text was included in content classification below.',
+          'The HTML hides text from the reader (display:none / font-size:0 / visibility:hidden) that contains an attack payload — ' +
+          'a prompt-injection instruction or concealed phishing content. This is how injection and message-spoofing payloads are smuggled past a human.',
       }),
     );
   } else {
@@ -163,8 +228,12 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
   // image-based phishing: external link but almost no readable text
   const textOnly = (email.body_text || '').replace(/https?:\/\/\S+/g, '').trim();
   const extUrls = email.urls.filter((u) => u.domain);
-  if (textOnly.length < 20 && extUrls.length) {
-    const domains = [...new Set(extUrls.map((u) => u.domain!))].sort();
+  const allDomains = [...new Set(extUrls.map((u) => u.domain!))].sort();
+  const fromDomain = email.from_addr && email.from_addr.includes('@') ? email.from_addr.split('@').pop()!.toLowerCase() : null;
+  // A legit image-only newsletter links to the brand's own domain; only the
+  // off-domain image-link pattern is the classic image-based phishing tell.
+  if (textOnly.length < 20 && extUrls.length && hasOffDomainLink(fromDomain, allDomains)) {
+    const domains = allDomains;
     ev.push(
       triggered(caseId, Analyzer.M4_CONTENT, 'links_no_text', {
         visible_text_len: textOnly.length,

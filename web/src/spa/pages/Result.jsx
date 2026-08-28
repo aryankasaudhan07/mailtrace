@@ -70,7 +70,8 @@ export default function Result() {
   const info = bandInfo(v.band)
   const contribs = v.contributions || []
   const positive = contribs.filter((x) => x.points > 0).sort((a, b) => b.points - a.points)
-  const cls = classify(contribs)
+  // A benign-scored message is Clean, whatever weak corroborating signals fired.
+  const cls = v.band === 'BENIGN' ? 'Clean' : classify(contribs)
   const [category, intent] = CLASS_DETAIL[cls] || CLASS_DETAIL['Suspicious Email']
   const conf = Math.round((v.confidence || 0) * 100)
 
@@ -81,8 +82,10 @@ export default function Result() {
   const fromD = domainOf(c.from_addr)
   const replyD = domainOf(c.reply_to)
   const returnD = domainOf(c.return_path)
-  const replyMis = replyD && fromD && replyD !== fromD
-  const returnMis = returnD && fromD && returnD !== fromD
+  // subdomains of the same org are aligned (e.g. email.chess.com vs chess.com)
+  const sameOrg = (a, b) => a === b || a.endsWith('.' + b) || b.endsWith('.' + a)
+  const replyMis = replyD && fromD && !sameOrg(replyD, fromD)
+  const returnMis = returnD && fromD && !sameOrg(returnD, fromD)
   const aligned = !replyMis && !returnMis
 
   const urls = art.urls || []
