@@ -34,6 +34,12 @@ function parseHopDate(value: string): string | null {
   return Number.isNaN(d.getTime()) ? null : d.toISOString();
 }
 
+function messageIdDomain(mid: string | null): string | null {
+  if (!mid) return null;
+  const m = mid.match(/@([^>\s]+)/);
+  return m ? m[1].toLowerCase().replace(/[>\s]+$/, '') : null;
+}
+
 export function parseHops(email: ParsedEmail): Hop[] {
   const received = headerValues(email, 'received');
   const hops: Hop[] = [];
@@ -229,6 +235,32 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
     }
   } else {
     ev.push(clear(caseId, Analyzer.M2_HEADERS, 'fake_reply'));
+  }
+
+  // Message-ID domain should belong to the sender or a relay that handled the
+  // message; a well-behaved MTA stamps its OWN domain into the Message-ID.
+  const midDomain = messageIdDomain(email.message_id);
+  if (midDomain && fromDom) {
+    const relayHosts: string[] = [];
+    for (const h of hops) {
+      if (h.by_host) relayHosts.push(h.by_host);
+      if (h.from_host) relayHosts.push(h.from_host);
+    }
+    const matches = sameOrgDomain(midDomain, fromDom) || relayHosts.some((host) => sameOrgDomain(midDomain, host));
+    if (!matches) {
+      ev.push(
+        triggered(caseId, Analyzer.M2_HEADERS, 'message_id_domain_divergence', {
+          message_id_domain: midDomain,
+          from_domain: fromDom,
+          explanation:
+            'The Message-ID domain matches neither the sender domain nor any relay that handled the message — well-behaved MTAs stamp their own domain into the Message-ID.',
+        }),
+      );
+    } else {
+      ev.push(clear(caseId, Analyzer.M2_HEADERS, 'message_id_domain_divergence'));
+    }
+  } else {
+    ev.push(clear(caseId, Analyzer.M2_HEADERS, 'message_id_domain_divergence'));
   }
 
   return ev;

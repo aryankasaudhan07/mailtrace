@@ -154,6 +154,31 @@ function hasOffDomainLink(fromDomain: string | null, linkDomains: string[]): boo
   return linkDomains.some((d) => !sameOrg(d.toLowerCase()));
 }
 
+// Executable / script / shortcut / disk-image extensions — the primary malware
+// delivery vector, almost never legitimate in ordinary mail.
+const DANGEROUS_EXT = new Set([
+  'exe', 'scr', 'com', 'pif', 'bat', 'cmd', 'js', 'jse', 'vbs', 'vbe', 'wsf', 'wsh',
+  'hta', 'msi', 'msp', 'jar', 'lnk', 'iso', 'img', 'vhd', 'vhdx', 'cpl', 'reg',
+  'ps1', 'psm1', 'msc', 'gadget', 'application', 'scf', 'inf', 'chm', 'jnlp', 'scr',
+]);
+const DANGEROUS_CT_RE = /x-msdownload|x-msdos-program|x-dosexec|portable-executable|x-sh\b|x-shellscript|hta|x-ms-shortcut/i;
+
+/** The first attachment with an executable/script extension or content-type. */
+function dangerousAttachment(email: ParsedEmail): { filename: string; reason: string } | null {
+  for (const a of email.attachments || []) {
+    const name = (a.filename || '').toLowerCase();
+    const ext = name.match(/\.([a-z0-9]{1,6})$/)?.[1];
+    if (ext && DANGEROUS_EXT.has(ext)) {
+      const doubled = /\.(pdf|docx?|xlsx?|jpe?g|png|txt|zip|html?)\.[a-z0-9]{1,6}$/i.test(name);
+      return { filename: a.filename || '(unnamed)', reason: doubled ? `double extension (${ext})` : `.${ext} executable/script` };
+    }
+    if (DANGEROUS_CT_RE.test(a.content_type || '')) {
+      return { filename: a.filename || '(unnamed)', reason: `content-type ${a.content_type}` };
+    }
+  }
+  return null;
+}
+
 function heuristic(subject: string, body: string, displayName = ''): ContentResult {
   const text = canonical(`${subject} ${body}`); // fold homoglyphs / strip invisibles first
   const execText = canonical(`${displayName} ${subject} ${body}`); // title is usually in the display name
@@ -336,6 +361,26 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
   if (result.gift_card_scam) {
     ev.push(triggered(caseId, Analyzer.M4_CONTENT, 'gift_card_scam', {
       explanation: 'Requests the purchase of gift cards and the return of their codes — a common BEC / advance-fee scam.',
+    }));
+  }
+
+  // executable / script attachment
+  const badAtt = dangerousAttachment(email);
+  if (badAtt) {
+    ev.push(triggered(caseId, Analyzer.M4_CONTENT, 'dangerous_attachment', {
+      filename: badAtt.filename,
+      reason: badAtt.reason,
+      explanation: `Attachment "${badAtt.filename}" is an executable/script (${badAtt.reason}) — the primary malware-delivery vector, rarely legitimate in ordinary mail.`,
+    }));
+  }
+
+  // SVG attachment carrying active content (script / handler / js-href)
+  const svgAtt = (email.attachments || []).find((a) => (a.active_content?.length ?? 0) > 0);
+  if (svgAtt) {
+    ev.push(triggered(caseId, Analyzer.M4_CONTENT, 'active_svg_attachment', {
+      filename: svgAtt.filename || '(unnamed)',
+      samples: (svgAtt.active_content || []).slice(0, 5),
+      explanation: `SVG attachment "${svgAtt.filename || '(unnamed)'}" contains active content (script / event handler / javascript: href) — an SVG is XML, and active content in it is an attack payload, not a graphic.`,
     }));
   }
 

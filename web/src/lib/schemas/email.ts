@@ -34,6 +34,9 @@ export interface Attachment {
   content_type: string | null;
   size_bytes: number;
   sha256: string;
+  /** Active content extracted from an SVG attachment (scripts / event handlers /
+   *  javascript: or data: hrefs). Empty/absent for benign or non-SVG parts. */
+  active_content?: string[];
 }
 
 export interface ExtractedUrl {

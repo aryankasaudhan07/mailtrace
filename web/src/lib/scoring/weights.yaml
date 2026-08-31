@@ -10,7 +10,7 @@
 #
 # Owner: Track E
 
-version: "1.7.0"
+version: "1.8.0"
 
 # Band boundaries. These MUST match bandFromScore() in schemas/verdict.ts and
 # the UI: 1-25 clean, 26-50 suspicious, 51-75 high risk, 76-100 critical.
@@ -236,6 +236,25 @@ signals:
       characters inserted between letters, used to slip keywords past filters.
       Legitimate mail does not disguise its own words this way. We fold the
       disguise away before content classification so the real intent still scores.
+
+  dangerous_attachment:
+    weight: 26
+    analyzer: M4
+    label: "Executable / script attachment"
+    rationale: >
+      An attachment with an executable, script, shortcut or disk-image extension
+      (.exe/.scr/.js/.vbs/.hta/.lnk/.iso/.msi/...), or a double-extension
+      (invoice.pdf.exe). These are the primary malware-delivery vector and are
+      almost never legitimate in ordinary mail, so a single one flags on its own.
+
+  active_svg_attachment:
+    weight: 16
+    analyzer: M4
+    label: "SVG attachment carries active content"
+    rationale: >
+      An image/svg+xml attachment is XML, not a picture: attackers embed <script>,
+      event handlers (onload=...), javascript: hrefs and data: URIs in it. Any
+      active content in an SVG attachment is an attack payload, not a graphic.
 
   links_no_text:
     weight: 10
