@@ -1,0 +1,24 @@
+{
+  "manifest_version": 3,
+  "name": "Mailtrace — Gmail Read Receipts",
+  "version": "1.0.0",
+  "description": "See when the Gmail messages you send get opened. Powered by your Mailtrace account.",
+  "permissions": ["storage"],
+  "host_permissions": [
+    "https://mail.google.com/*",
+    "https://mailtrace-zeta.vercel.app/*",
+    "http://localhost:3000/*"
+  ],
+  "background": { "service_worker": "background.js" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Mailtrace Read Receipts"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://mail.google.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
