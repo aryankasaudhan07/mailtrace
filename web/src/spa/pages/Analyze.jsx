@@ -64,7 +64,7 @@ export default function Analyze() {
             <input ref={inputRef} type="file" accept=".eml,.msg,message/rfc822" hidden
               onChange={(e) => setFile(e.target.files?.[0] || null)} />
             {busy ? (
-              <><Loader2 className="spin" size={40} /><div className="dz-t">Running 6 analyzers…</div>
+              <><Loader2 className="spin" size={40} /><div className="dz-t">Running 7 analyzers…</div>
                 <div className="muted">Parsing headers, verifying SPF/DKIM/DMARC, scoring content</div></>
             ) : file ? (
               <><FileText size={40} color="var(--violet)" /><div className="dz-t">{file.name}</div>
@@ -98,7 +98,7 @@ export default function Analyze() {
           <p className="muted" style={{ fontSize: '.82rem', marginTop: 16, lineHeight: 1.5 }}>
             Samples are synthetic. Every verdict below is produced live by the real analyzers —
             header forensics, SPF/DKIM/DMARC re-verification, NLP content analysis, network &
-            domain intelligence, and campaign correlation.
+            domain intelligence, campaign correlation, and sender-footprint analysis.
           </p>
         </div>
       </div>

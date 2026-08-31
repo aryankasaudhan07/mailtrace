@@ -4,7 +4,7 @@ import { enforceRateLimit } from '@/lib/ratelimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-// analysis runs six lanes (some do DNS/RDAP); give it headroom on Vercel.
+// analysis runs seven lanes (some do DNS/RDAP); give it headroom on Vercel.
 export const maxDuration = 60;
 
 export async function GET(req: Request) {
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   return guard(async () => {
     const owner = requireUser(req);
-    await enforceRateLimit(`analyze:${owner}`, 60, 60); // 60 analyses / min per user (each runs 6 lanes + DNS/RDAP)
+    await enforceRateLimit(`analyze:${owner}`, 60, 60); // 60 analyses / min per user (each runs 7 lanes + DNS/RDAP)
     const form = await req.formData();
     const file = form.get('file');
     if (!(file instanceof File)) return json({ detail: 'empty upload' }, 400);
