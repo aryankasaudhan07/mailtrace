@@ -1,5 +1,14 @@
 /** Small helpers for Route Handlers. */
-import { HttpError } from './auth';
+import { HttpError, verifyToken } from './auth';
+
+/** Identify the caller from the Bearer token, or 401. Cases and all derived
+ *  views are scoped to this identity so accounts never see each other's data. */
+export function requireUser(req: Request): string {
+  const token = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '').trim();
+  const email = token ? verifyToken(token) : null;
+  if (!email) throw new HttpError(401, 'Not authenticated');
+  return email;
+}
 
 export const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json' } });

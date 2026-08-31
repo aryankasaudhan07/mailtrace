@@ -44,6 +44,28 @@ export const api = {
     fd.append('file', file)
     return j('/api/cases', { method: 'POST', body: fd })
   },
+  // The PDF report route is owner-scoped and requires the Bearer token, so it
+  // can't be a plain <a href> (a browser navigation sends no Authorization).
+  // Fetch it as an authenticated blob and trigger a client-side download.
+  downloadReport: async (id, subject) => {
+    const tok = getToken()
+    const r = await fetch(`/api/cases/${id}/report`, { headers: tok ? { Authorization: `Bearer ${tok}` } : {} })
+    if (!r.ok) {
+      let msg = `${r.status} ${r.statusText}`
+      try { const b = await r.json(); if (b.detail) msg = b.detail } catch { /* ignore */ }
+      throw new Error(msg)
+    }
+    const blob = await r.blob()
+    const safe = (subject || 'case').replace(/[^a-z0-9]+/gi, '-').slice(0, 40).replace(/^-|-$/g, '') || 'case'
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `mailtrace-${safe}-${String(id).slice(0, 8)}.pdf`
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+  },
 }
 
 // ---- shared derivations used across pages ----

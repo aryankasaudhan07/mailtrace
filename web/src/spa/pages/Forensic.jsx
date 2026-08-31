@@ -46,7 +46,7 @@ export default function Forensic() {
   return (
     <div>
       <PageHead title="Forensic Analysis" back={{ to: `/result/${id}`, label: 'Back to Result' }}
-        actions={<a className="btn ghost" href={`/api/cases/${id}/report`} target="_blank" rel="noreferrer"><Download size={16} /> Report</a>} />
+        actions={<button className="btn ghost" onClick={() => api.downloadReport(id, d?.c?.subject).catch((e) => alert('Report failed: ' + (e.message || e)))}><Download size={16} /> Report</button>} />
 
       {/* persistent verdict strip — same context as the Result page */}
       <div className="fo-verdict card">

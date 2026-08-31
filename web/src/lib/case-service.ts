@@ -16,6 +16,7 @@ import type { Evidence } from './schemas/evidence';
 import type { Attachment, ExtractedUrl, Hop, ParsedEmail } from './schemas/email';
 import type { Verdict } from './schemas/verdict';
 import { allIndicators, caseIdBySha, getCase, indexSha, listCases, saveCase, type StoredCase } from './store';
+import { DEFAULT_OWNER, runAsOwner } from './owner-context';
 
 export interface CaseRecord extends StoredCase {
   filename: string | null;
@@ -39,10 +40,11 @@ export interface CaseRecord extends StoredCase {
   raw: string;
 }
 
-function toRecord(caseId: string, email: ParsedEmail, hops: Hop[], evidence: Evidence[], verdict: Verdict, filename: string | null): CaseRecord {
+function toRecord(caseId: string, email: ParsedEmail, hops: Hop[], evidence: Evidence[], verdict: Verdict, filename: string | null, owner: string): CaseRecord {
   return {
     case_id: caseId,
     analyzed_at: new Date().toISOString(),
+    owner,
     filename,
     sha256: email.sha256,
     size_bytes: email.rawBytes.length,
@@ -65,40 +67,52 @@ function toRecord(caseId: string, email: ParsedEmail, hops: Hop[], evidence: Evi
   };
 }
 
-/** Analyze a raw email, persist the case, and return the POST /api/cases body. */
-export async function analyzeAndStore(raw: Buffer, filename: string | null): Promise<{ case_id: string; filename: string | null; sha256: string; verdict: Verdict }> {
-  // Idempotency: identical bytes -> the same case/verdict every time. This makes
-  // re-analysis deterministic and stops a file from self-correlating as a
-  // campaign with its own prior uploads (and freezes any network-lane wobble).
-  const sha = createHash('sha256').update(raw).digest('hex');
-  const currentVersion = loadRules().version;
-  let caseId: string = randomUUID();
-  const existingId = await caseIdBySha(sha);
-  if (existingId) {
-    const prior = await getCase(existingId);
-    if (prior) {
-      const r = prior as CaseRecord;
-      // Return the cache only when it was scored by the CURRENT rules. A version
-      // mismatch (e.g. a case stored before a new analyzer/weight shipped) is
-      // stale, so re-analyze it in place -- reusing the same case_id keeps links
-      // stable and avoids a duplicate History entry.
-      if (r.verdict.scorer_version === currentVersion) {
-        return { case_id: r.case_id, filename: r.filename, sha256: sha, verdict: r.verdict };
+/** Analyze a raw email, persist the case, and return the POST /api/cases body.
+ *  All storage and M7 correlation is scoped to `owner` (the uploading user). */
+export async function analyzeAndStore(raw: Buffer, filename: string | null, owner: string = DEFAULT_OWNER): Promise<{ case_id: string; filename: string | null; sha256: string; verdict: Verdict }> {
+  return runAsOwner(owner, async () => {
+    // Idempotency: identical bytes -> the same case/verdict every time, WITHIN
+    // this owner. This makes re-analysis deterministic and stops a file from
+    // self-correlating as a campaign with its own prior uploads (and freezes any
+    // network-lane wobble). A different user's identical upload is independent.
+    const sha = createHash('sha256').update(raw).digest('hex');
+    const currentVersion = loadRules().version;
+    let caseId: string = randomUUID();
+    const existingId = await caseIdBySha(sha, owner);
+    if (existingId) {
+      const prior = await getCase(existingId);
+      if (prior) {
+        const r = prior as CaseRecord;
+        // Return the cache only when it was scored by the CURRENT rules. A version
+        // mismatch (e.g. a case stored before a new analyzer/weight shipped) is
+        // stale, so re-analyze it in place -- reusing the same case_id keeps links
+        // stable and avoids a duplicate History entry.
+        if (r.verdict.scorer_version === currentVersion) {
+          return { case_id: r.case_id, filename: r.filename, sha256: sha, verdict: r.verdict };
+        }
+        caseId = existingId;
       }
-      caseId = existingId;
     }
-  }
 
-  const email = await parseEmail(raw);
-  const evidence = await runAll(caseId, email);
-  const verdict = scoreCase(caseId, evidence);
+    const email = await parseEmail(raw);
+    const evidence = await runAll(caseId, email); // M7 correlates within `owner` via ALS
+    const verdict = scoreCase(caseId, evidence);
 
-  const hops = parseHops(email);
-  resolveTrustBoundary(hops, config.trustedHosts(), config.trustedCidrs());
+    const hops = parseHops(email);
+    resolveTrustBoundary(hops, config.trustedHosts(), config.trustedCidrs());
 
-  await saveCase(toRecord(caseId, email, hops, evidence, verdict, filename));
-  await indexSha(sha, caseId);
-  return { case_id: caseId, filename, sha256: email.sha256, verdict };
+    await saveCase(toRecord(caseId, email, hops, evidence, verdict, filename, owner));
+    await indexSha(sha, caseId, owner);
+    return { case_id: caseId, filename, sha256: email.sha256, verdict };
+  });
+}
+
+/** Fetch a case only if it belongs to `owner`; otherwise null (isolation). */
+export async function getOwnedCase(id: string, owner: string): Promise<StoredCase | null> {
+  const c = await getCase(id);
+  if (!c) return null;
+  const o = (c as CaseRecord).owner;
+  return o === owner ? c : null;
 }
 
 // --- serializers (match app/api/cases.py) -----------------------------------
@@ -227,8 +241,8 @@ function threatType(v: Verdict): string {
   return pos.length ? 'Suspicious' : 'Clean';
 }
 
-export async function buildStats() {
-  const cases = (await listCases(1000)).map(rec);
+export async function buildStats(owner: string = DEFAULT_OWNER) {
+  const cases = (await listCases(1000, owner)).map(rec);
   const total = cases.length;
   const bands: Record<string, number> = {};
   const buckets: Record<string, number> = {};
@@ -271,8 +285,8 @@ export async function buildStats() {
 //      + app/graph/relationships.py) --------------------------------------------
 
 /** Case <-> indicator graph for the Threat Intelligence dashboard. */
-export async function caseGraph() {
-  const cases = (await listCases(1000)).map((c) => {
+export async function caseGraph(owner: string = DEFAULT_OWNER) {
+  const cases = (await listCases(1000, owner)).map((c) => {
     const r = rec(c);
     return {
       case_id: r.case_id,
@@ -283,7 +297,7 @@ export async function caseGraph() {
       from_addr: r.from_addr,
     };
   });
-  const edges = await allIndicators();
+  const edges = await allIndicators(owner);
   return { cases, edges };
 }
 
@@ -291,8 +305,8 @@ export async function caseGraph() {
 const IND_WEIGHT: Record<string, number> = { ip: 0.8, urlreg: 0.5, url: 0.4, hash: 0.3 };
 
 /** Campaign clusters: connected components of cases sharing infrastructure. */
-export async function campaignClusters() {
-  const edges = await allIndicators();
+export async function campaignClusters(owner: string = DEFAULT_OWNER) {
+  const edges = await allIndicators(owner);
 
   // case -> set of "kind:value" indicators
   const indForCase = new Map<string, Set<string>>();
@@ -371,9 +385,9 @@ export async function campaignClusters() {
  * (In-Reply-To / References -> a prior case's Message-ID). Two cases touching
  * the same entity node are visibly related.
  */
-export async function caseEntityGraph(caseIds?: string[]) {
+export async function caseEntityGraph(caseIds?: string[], owner: string = DEFAULT_OWNER) {
   const pick = caseIds && caseIds.length ? new Set(caseIds) : null;
-  const cases = (await listCases(5000)).map(rec).filter((r) => !pick || pick.has(r.case_id));
+  const cases = (await listCases(5000, owner)).map(rec).filter((r) => !pick || pick.has(r.case_id));
   const nodes = new Map<string, { id: string; type: string; label: string; score?: number; band?: string }>();
   const links: Array<{ source: string; target: string; rel: string }> = [];
 
