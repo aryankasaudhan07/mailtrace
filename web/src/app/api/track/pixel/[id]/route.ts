@@ -6,6 +6,7 @@
  * best-effort (see the extension README).
  */
 import { recordOpen } from '@/lib/track-store';
+import { rateLimit } from '@/lib/ratelimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,8 +20,11 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
   if (/^[A-Za-z0-9_-]{8,128}$/.test(clean)) {
     const ip = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || 'unknown';
     const ua = (req.headers.get('user-agent') || '').slice(0, 300);
+    // Soft limit: the pixel ALWAYS renders (never 429 a recipient's mail client),
+    // but stop recording opens from an IP that is flooding us (abuse / log spam).
+    const { ok } = await rateLimit(`pixel:${ip}`, 600, 60); // 600 opens / min per IP
     // fire and forget: never make the recipient wait on our storage
-    recordOpen(clean, { at: new Date().toISOString(), ua, ip }).catch(() => {});
+    if (ok) recordOpen(clean, { at: new Date().toISOString(), ua, ip }).catch(() => {});
   }
   return new Response(GIF as BodyInit, {
     status: 200,

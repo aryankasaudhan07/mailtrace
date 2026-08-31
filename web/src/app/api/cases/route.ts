@@ -1,5 +1,6 @@
 import { analyzeAndStore, caseListItem, listCases } from '@/lib/case-service';
 import { json, guard, requireUser } from '@/lib/http';
+import { enforceRateLimit } from '@/lib/ratelimit';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -22,6 +23,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   return guard(async () => {
     const owner = requireUser(req);
+    await enforceRateLimit(`analyze:${owner}`, 60, 60); // 60 analyses / min per user (each runs 6 lanes + DNS/RDAP)
     const form = await req.formData();
     const file = form.get('file');
     if (!(file instanceof File)) return json({ detail: 'empty upload' }, 400);
