@@ -14,7 +14,8 @@
 import { resolveTxt } from 'node:dns/promises';
 import { dkimVerify } from 'mailauth/lib/dkim/verify';
 import { spf as mailauthSpf } from 'mailauth/lib/spf';
-import { Analyzer, clear, triggered, unavailable, type Evidence } from '../schemas/evidence';
+import { arc as arcVerify } from 'mailauth/lib/arc';
+import { Analyzer, Status, clear, triggered, unavailable, type Evidence } from '../schemas/evidence';
 import { registrableDomain, sameOrgDomain } from './domains';
 import { headerValues, type ParsedEmail } from '../schemas/email';
 import { register } from './base';
@@ -175,6 +176,28 @@ export async function verifySpf(
   }
 }
 
+// --- ARC ---------------------------------------------------------------------
+// Verify the Authenticated Received Chain. cv=pass means each ARC hop validated
+// the previous one, so the authentication results recorded before forwarding are
+// trustworthy -- the legitimate reason a forwarded message fails SPF at the final
+// hop. 'unavailable' = the ARC keys/DNS could not be reached (offline), so we
+// must NOT use it to excuse an SPF failure.
+export type ArcStatus = 'pass' | 'fail' | 'none' | 'unavailable';
+
+export async function verifyArc(email: ParsedEmail, resolver?: (name: string, rr: string) => Promise<string[][]>): Promise<ArcStatus> {
+  if (!email.rawBytes?.length) return 'none';
+  try {
+    const dk = await dkimVerify(email.rawBytes, resolver ? { resolver } : {});
+    const chain = (dk as { arc?: { chain?: unknown[] } })?.arc;
+    if (!chain || !Array.isArray(chain.chain) || chain.chain.length === 0) return 'none';
+    const res = await arcVerify(chain as Parameters<typeof arcVerify>[0], resolver ? { resolver } : {});
+    const r = (res as { status?: { result?: string } })?.status?.result;
+    return r === 'pass' || r === 'fail' || r === 'none' ? r : 'none';
+  } catch {
+    return 'unavailable'; // ARC key lookup / DNS failed -- cannot confirm, so do not excuse SPF
+  }
+}
+
 // --- DMARC -------------------------------------------------------------------
 // A DNS resolver error that means "couldn't reach DNS" (offline / transient),
 // as opposed to a definitive "no such record" (ENOTFOUND / ENODATA). The former
@@ -265,8 +288,25 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
 
   try {
     const spfR = await verifySpf(caseId, email, clientIp);
-    if (spfR.ev) ev.push(spfR.ev);
     spfPass = spfR.pass;
+    if (spfR.ev?.signal === 'spf_fail_hard' && spfR.ev.status === Status.TRIGGERED) {
+      // A hard SPF fail is the expected symptom of legitimate forwarding. Only
+      // penalise it if a valid ARC chain does NOT vouch for the pre-forward auth.
+      const arc = await verifyArc(email, dkimResolver);
+      if (arc === 'pass') {
+        ev.push(
+          triggered(caseId, Analyzer.M3_AUTH, 'arc_authenticated', {
+            explanation:
+              'SPF failed at the receiving hop, but a valid ARC chain (cv=pass) shows the message was ' +
+              'authenticated before it was forwarded — legitimate forwarding, not spoofing. SPF penalty suppressed.',
+          }),
+        );
+      } else {
+        ev.push(spfR.ev); // no valid ARC to excuse it — keep the SPF-fail penalty
+      }
+    } else if (spfR.ev) {
+      ev.push(spfR.ev);
+    }
   } catch {
     /* SPF is best-effort; ignore */
   }

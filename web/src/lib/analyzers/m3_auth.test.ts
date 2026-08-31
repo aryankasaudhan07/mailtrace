@@ -1,11 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { generateKeyPairSync } from 'node:crypto';
 import { dkimSign } from 'mailauth/lib/dkim/sign';
+import { sealMessage } from 'mailauth/lib/arc';
 import { parseEmail } from '../ingest/parser';
 import { Status } from '../schemas/evidence';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { aligned, dkimSigningDomains, verifyDkim, dmarcPolicy, verifyDmarc, dkimResolver } from './m3_auth';
+import { aligned, dkimSigningDomains, verifyDkim, dmarcPolicy, verifyDmarc, dkimResolver, verifyArc } from './m3_auth';
 
 describe('M3 demo DKIM samples (bundled public key, no DNS)', () => {
   const sample = (n: string) => readFileSync(join(process.cwd(), 'public/samples', n));
@@ -127,5 +128,38 @@ describe('M3 DMARC decision (offline via injected TXT resolver)', () => {
     expect((await dmarcPolicy('acme.example', txt)).policy).toBeNull();
     const ev = await verifyDmarc('c', await email(), false, txt);
     expect(ev).toBeNull();
+  });
+});
+
+describe('M3 ARC verification (sign -> verify, offline via injected resolver)', () => {
+  const { privateKey, publicKey } = generateKeyPairSync('rsa', {
+    modulusLength: 2048,
+    publicKeyEncoding: { type: 'spki', format: 'der' },
+    privateKeyEncoding: { type: 'pkcs8', format: 'pem' },
+  });
+  const pubB64 = (publicKey as unknown as Buffer).toString('base64');
+  const domain = 'forwarder.example', selector = 'arcsel';
+  const resolver = async (name: string, rr: string): Promise<string[][]> => {
+    if (rr === 'TXT' && name === `${selector}._domainkey.${domain}`) return [[`v=DKIM1; k=rsa; p=${pubB64}`]];
+    throw Object.assign(new Error('ENOTFOUND'), { code: 'ENOTFOUND' });
+  };
+  const msg = Buffer.from([
+    'From: sender@origin.example', 'To: rcpt@dest.example', 'Subject: fwd',
+    'Date: Tue, 26 Aug 2026 10:00:00 +0000', 'Message-ID: <a@origin.example>', '', 'Body text', '',
+  ].join('\r\n'));
+
+  it('a validly ARC-sealed message verifies -> pass', async () => {
+    const sealHeaders: Buffer = await sealMessage(msg, {
+      signingDomain: domain, selector, privateKey: privateKey as unknown as string, algorithm: 'rsa-sha256',
+      cv: 'none', signTime: new Date('2026-08-26T10:00:05Z'),
+      headerList: 'from:to:subject:date:message-id',
+      authResults: `${domain}; spf=pass smtp.mailfrom=origin.example; dkim=pass header.d=origin.example`,
+    } as never);
+    const sealed = Buffer.concat([sealHeaders, msg]);
+    expect(await verifyArc({ rawBytes: sealed } as never, resolver)).toBe('pass');
+  });
+
+  it('a message with no ARC chain -> none (does not excuse SPF)', async () => {
+    expect(await verifyArc({ rawBytes: msg } as never, resolver)).toBe('none');
   });
 });

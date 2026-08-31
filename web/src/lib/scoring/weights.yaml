@@ -10,7 +10,7 @@
 #
 # Owner: Track E
 
-version: "1.9.0"
+version: "1.10.0"
 
 # Band boundaries. These MUST match bandFromScore() in schemas/verdict.ts and
 # the UI: 1-25 clean, 26-50 suspicious, 51-75 high risk, 76-100 critical.
@@ -164,6 +164,18 @@ signals:
     analyzer: M3
     label: "SPF hard fail"
     rationale: "Weighted below DMARC because legitimate forwarding breaks SPF."
+
+  arc_authenticated:
+    weight: 0
+    analyzer: M3
+    label: "SPF fail mitigated by a valid ARC chain"
+    rationale: >
+      Informational, weight 0. SPF failed at the receiving hop, but a valid
+      Authenticated Received Chain (cv=pass) shows the message was authenticated
+      BEFORE it was forwarded -- the classic legitimate cause of an SPF break.
+      When ARC validates, the spf_fail_hard penalty is suppressed and this is
+      recorded instead, so honest forwarded mail is not penalised. ARC that is
+      absent, fails, or cannot be verified (offline) does NOT suppress SPF.
 
   dkim_missing:
     weight: 8
