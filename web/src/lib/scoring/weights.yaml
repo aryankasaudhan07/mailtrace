@@ -10,7 +10,7 @@
 #
 # Owner: Track E
 
-version: "1.8.0"
+version: "1.9.0"
 
 # Band boundaries. These MUST match bandFromScore() in schemas/verdict.ts and
 # the UI: 1-25 clean, 26-50 suspicious, 51-75 high risk, 76-100 critical.
@@ -128,13 +128,23 @@ signals:
     weight: 14
     analyzer: M2
     label: "Relay chain does not join up"
-    rationale: "Hop N's 'by' host does not match hop N+1's 'from' host."
+    rationale: >
+      Boomerang detection: a relay organisation that leaves the from-host path
+      and then reappears. Legitimate transit is one-way (origin -> forwarders ->
+      recipient) and never returns to infrastructure it already left, so this is
+      an injected Received hop. Deliberately narrow -- a plain org change is the
+      normal sender->recipient handoff and does not fire.
 
   rdns_mismatch:
     weight: 10
-    analyzer: M2
+    analyzer: M6
     label: "Hostname does not resolve to claimed IP"
-    rationale: "Weak on its own -- legitimate misconfiguration is common -- but corroborating."
+    rationale: >
+      Forward-confirm: the origin relay's announced HELO hostname resolves to a
+      set of IPs that excludes the address it connected from (not even the same
+      /24). Weak on its own -- legitimate load-balancing/misconfiguration exists,
+      and NXDOMAIN is not flagged -- but corroborating. DNS-dependent, so it emits
+      UNAVAILABLE when the resolver is unreachable.
 
   message_id_domain_divergence:
     weight: 9

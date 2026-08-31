@@ -14,7 +14,7 @@ import { Analyzer, clear, triggered, type Evidence } from '../schemas/evidence';
 import { HopTrust, headerValues, type Hop, type ParsedEmail } from '../schemas/email';
 import { register } from './base';
 import { cleanIp, ipInCidrs, isUnroutableIp, parseCidr } from './ip';
-import { sameOrgDomain } from './domains';
+import { sameOrgDomain, registrableDomain } from './domains';
 
 const FROM_RE = /\bfrom\s+([A-Za-z0-9._-]+)?\s*(?:\((?:([A-Za-z0-9._-]+)\s*)?\[([0-9a-fA-F:.]+)\]\))?/i;
 const BY_RE = /\bby\s+([A-Za-z0-9._-]+)/i;
@@ -165,8 +165,16 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
   }
   if (!forgedSeqs.size) ev.push(clear(caseId, Analyzer.M2_HEADERS, 'forged_received_hop'));
 
-  // private/reserved IP where a public relay should be (skip already-forged hops)
-  const privateHit = hops.find((h) => isUnroutableIp(h.from_ip) && !forgedSeqs.has(h.seq));
+  // Private/reserved IP where a PUBLIC relay should be. Legitimate internal-
+  // delivery relays (10.x/192.168.x) live in the contiguous run at the TOP of the
+  // chain -- the hops AFTER the public boundary MX, on the way to the mailbox. A
+  // private IP BELOW that delivery tail is in public transit and cannot be
+  // legitimate. This stops flagging every org's normal internal relays.
+  const topDown = [...hops].sort((a, b) => b.seq - a.seq); // delivery first
+  let tail = 0;
+  while (tail < topDown.length && (topDown[tail].from_ip === null || isUnroutableIp(topDown[tail].from_ip))) tail++;
+  const transit = topDown.slice(tail); // from the first public hop downward toward the claimed origin
+  const privateHit = transit.find((h) => isUnroutableIp(h.from_ip) && !forgedSeqs.has(h.seq));
   if (privateHit) {
     ev.push(
       triggered(caseId, Analyzer.M2_HEADERS, 'private_ip_in_public_chain', {
@@ -261,6 +269,39 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
     }
   } else {
     ev.push(clear(caseId, Analyzer.M2_HEADERS, 'message_id_domain_divergence'));
+  }
+
+  // Chain discontinuity (boomerang): the from-host organisations along the path,
+  // with consecutive repeats collapsed, should never revisit an org they already
+  // left -- legitimate transit is a one-way path (origin -> [forwarders] ->
+  // recipient). A registrable domain that DISAPPEARS and then REAPPEARS means the
+  // message "left" that infrastructure and came back, the hallmark of an injected
+  // Received hop. Deliberately narrow (a plain org change is the normal
+  // sender->recipient handoff and does NOT fire) to keep this near-zero FP.
+  const pathRegs: string[] = [];
+  for (const h of [...hops].sort((a, b) => a.seq - b.seq)) {
+    if (!h.from_host || !h.from_host.includes('.')) continue;
+    const reg = registrableDomain(h.from_host);
+    if (reg && pathRegs[pathRegs.length - 1] !== reg) pathRegs.push(reg);
+  }
+  const seenRegs = new Set<string>();
+  let boomerang: string | null = null;
+  for (const reg of pathRegs) {
+    if (seenRegs.has(reg)) { boomerang = reg; break; }
+    seenRegs.add(reg);
+  }
+  if (boomerang) {
+    ev.push(
+      triggered(caseId, Analyzer.M2_HEADERS, 'chain_discontinuity', {
+        domain: boomerang,
+        relay_path: pathRegs,
+        explanation:
+          `The relay organisation '${boomerang}' leaves the path and then reappears (${pathRegs.join(' -> ')}) — ` +
+          'legitimate transit never returns to infrastructure it already left, so a Received hop was injected.',
+      }),
+    );
+  } else {
+    ev.push(clear(caseId, Analyzer.M2_HEADERS, 'chain_discontinuity'));
   }
 
   return ev;

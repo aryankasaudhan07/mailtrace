@@ -13,6 +13,8 @@ import { domainToUnicode } from 'node:url';
 import { Analyzer, clear, triggered, unavailable, type Evidence } from '../schemas/evidence';
 import type { ParsedEmail } from '../schemas/email';
 import { register } from './base';
+import { authenticatedOrigin } from './m2_headers';
+import { isPublicIp } from './ip';
 
 const PROTECTED_BRANDS = [
   'aicte-india.org',
@@ -133,6 +135,14 @@ function isDnsNetworkError(e: unknown): boolean {
   return code ? DNS_NET_ERRORS.has(code) : false;
 }
 
+// Same IPv4 /24 (tolerate load balancers / adjacent mail IPs); exact for IPv6.
+function sameV24(a: string, b: string): boolean {
+  const pa = a.split('.');
+  const pb = b.split('.');
+  if (pa.length !== 4 || pb.length !== 4) return a === b;
+  return pa[0] === pb[0] && pa[1] === pb[1] && pa[2] === pb[2];
+}
+
 // --- RDAP domain age ---------------------------------------------------------
 // `unavailable` = we could not reach RDAP (offline / timeout / server error),
 // so age is unknown and MUST surface as UNAVAILABLE, not as a silent "not new".
@@ -244,6 +254,39 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
         explanation: `Domain '${fromDomain}' ${reasons[technique] ?? 'imitates a protected brand'}.`,
       }),
     );
+  }
+
+  // rdns / forward-confirm: the relay at the authenticated origin (else the
+  // earliest public hop) announced a HELO hostname; that name should forward-
+  // resolve to the address it connected from. If it resolves to a set that
+  // clearly EXCLUDES the connecting IP (not even the same /24 -- allowing load
+  // balancers), the announced hostname does not belong to this address. NXDOMAIN
+  // is NOT flagged (many legit HELO names don't forward-resolve); a network
+  // failure surfaces as UNAVAILABLE, never a silent pass.
+  const { boundary, hops: relayHops } = authenticatedOrigin(email);
+  const originHop = boundary && isPublicIp(boundary.from_ip) ? boundary : relayHops.find((h) => isPublicIp(h.from_ip));
+  if (originHop?.from_host?.includes('.') && originHop.from_ip && !originHop.from_ip.includes(':')) {
+    try {
+      const ips = await resolve4(originHop.from_host);
+      if (ips.length && !ips.some((ip) => sameV24(ip, originHop.from_ip!))) {
+        ev.push(
+          triggered(caseId, Analyzer.M6_DOMAIN, 'rdns_mismatch', {
+            hostname: originHop.from_host,
+            connecting_ip: originHop.from_ip,
+            resolves_to: ips.slice(0, 4),
+            explanation:
+              `The relay announced hostname '${originHop.from_host}', but that name resolves to ${ips.slice(0, 3).join(', ')} — ` +
+              `not the ${originHop.from_ip} it actually connected from. The hostname does not belong to this address.`,
+          }),
+        );
+      }
+    } catch (e) {
+      if (isDnsNetworkError(e)) {
+        ev.push(unavailable(caseId, Analyzer.M6_DOMAIN, 'rdns_mismatch',
+          `Forward DNS for '${originHop.from_host}' was unreachable — hostname/IP consistency could not be checked.`));
+      }
+      // NXDOMAIN / no A record: not flagged (conservative).
+    }
   }
 
   if (!ev.length) {
