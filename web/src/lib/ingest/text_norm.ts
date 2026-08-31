@@ -22,7 +22,10 @@ const CONFUSABLES: Record<string, string> = {
 // Zero-width / directional / soft-hyphen / mongolian-vowel-separator.
 const INVISIBLE = '​‌‍⁠﻿­‎‏᠎';
 const INVIS_RE = new RegExp(`[${INVISIBLE}]`, 'g');
-const INVIS_IN_WORD_RE = new RegExp(`(?<=\\w)[${INVISIBLE}]+(?=\\w)`, 'g');
+// \w is ASCII-only in JS; use a Unicode letter/number class so invisible chars
+// inserted BETWEEN non-Latin letters (Cyrillic/Greek homoglyph words) are still
+// counted as an obfuscation run — not just between Latin letters.
+const INVIS_IN_WORD_RE = new RegExp(`(?<=[\\p{L}\\p{N}_])[${INVISIBLE}]+(?=[\\p{L}\\p{N}_])`, 'gu');
 
 const RE_CYRILLIC = /\p{Script=Cyrillic}/u;
 const RE_GREEK = /\p{Script=Greek}/u;

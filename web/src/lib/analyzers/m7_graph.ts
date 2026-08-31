@@ -20,39 +20,47 @@ const PUBLIC_PROVIDERS = new Set([
   'msn.com', 'yahoo.com', 'ymail.com', 'proton.me', 'protonmail.com',
   'icloud.com', 'me.com', 'aol.com', 'zoho.com', 'gmx.com', 'mail.com',
 ]);
-const TWO_LABEL_SUFFIXES = new Set([
-  'co.in', 'ac.in', 'gov.in', 'org.in', 'net.in', 'edu.in', 'res.in', 'nic.in',
-  'co.uk', 'org.uk', 'gov.uk', 'ac.uk', 'com.au', 'co.jp', 'com.br',
+// Common link/ESP/CDN hosts (registrable domains) that many unrelated messages
+// legitimately point at — correlating on these manufactures false "campaigns".
+const COMMON_LINK_HOSTS = new Set([
+  // shorteners / redirectors
+  'bit.ly', 't.co', 'tinyurl.com', 'goo.gl', 'ow.ly', 'buff.ly', 'lnkd.in', 'rebrand.ly', 'cutt.ly',
+  // big platforms / CDNs
+  'google.com', 'youtube.com', 'microsoft.com', 'apple.com', 'amazon.com', 'facebook.com',
+  'twitter.com', 'linkedin.com', 'github.com', 'dropbox.com', 'notion.so', 'slack.com', 'zoom.us',
+  // ESP / bulk-mail link + tracking hosts
+  'sendgrid.net', 'mailchimp.com', 'list-manage.com', 'sparkpostmail.com', 'amazonses.com',
+  'mandrillapp.com', 'hubspotemail.net', 'cmail1.com', 'cmail2.com', 'rs6.net', 'mailgun.org',
+  'klaviyomail.com', 'sendgrid.com', 'exct.net', 'mcsv.net',
 ]);
 
-export function registrableDomain(host: string): string | null {
-  const labels = host.toLowerCase().replace(/^\.+|\.+$/g, '').split('.');
-  if (labels.length < 2) return null;
-  const lastTwo = labels.slice(-2).join('.');
-  const take = TWO_LABEL_SUFFIXES.has(lastTwo) ? 3 : 2;
-  if (labels.length < take) return null;
-  return labels.slice(-take).join('.');
-}
+import { registrableDomain } from './domains';
+export { registrableDomain }; // re-exported for back-compat (m4_content imports it from here)
 
 export function extractIndicators(email: ParsedEmail): Indicators {
   const ind: Indicators = { ip: new Set(), url: new Set(), urlreg: new Set(), hash: new Set() };
 
-  // authenticated origin only (the one relay IP an attacker cannot forge);
-  // fall back to every routable hop when no boundary resolves.
+  // authenticated origin only (the one relay IP an attacker cannot forge).
+  // When no boundary resolves, correlate on ONLY the earliest routable hop (the
+  // claimed origin) -- adding every hop would link unrelated mail that merely
+  // transited a shared provider/relay IP (Google/Microsoft outbound) as a "campaign".
   const { boundary, hops } = authenticatedOrigin(email);
   if (boundary && isPublicIp(boundary.from_ip)) {
     ind.ip.add(boundary.from_ip!);
   } else {
-    for (const h of hops) if (isPublicIp(h.from_ip)) ind.ip.add(h.from_ip!);
+    const originHop = hops.find((h) => isPublicIp(h.from_ip));
+    if (originHop) ind.ip.add(originHop.from_ip!);
   }
 
   for (const u of email.urls) {
-    if (u.domain) {
-      const host = u.domain.toLowerCase();
-      ind.url.add(host);
-      const reg = registrableDomain(host);
-      if (reg && !PUBLIC_PROVIDERS.has(reg)) ind.urlreg.add(reg);
-    }
+    if (!u.domain) continue;
+    const host = u.domain.toLowerCase();
+    const reg = registrableDomain(host);
+    // Skip shorteners, CDNs, big platforms and ESP link/tracking hosts: many
+    // unrelated messages point at these, so correlating on them is a false campaign.
+    if (reg && (PUBLIC_PROVIDERS.has(reg) || COMMON_LINK_HOSTS.has(reg))) continue;
+    ind.url.add(host);
+    if (reg) ind.urlreg.add(reg);
   }
 
   for (const a of email.attachments) if (a.sha256) ind.hash.add(a.sha256);

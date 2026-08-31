@@ -22,6 +22,13 @@ const PROTECTED_BRANDS = [
   'npci.org.in',
 ];
 
+// Real, brand-ADJACENT domains that fuzz-/token-match a protected brand but are
+// legitimate and must never be flagged as lookalikes: NPCIL (Nuclear Power Corp
+// of India -- npci + 'l', unrelated to NPCI) and SBI-owned domains on other TLDs.
+const LEGIT_NEAR_BRANDS = new Set([
+  'npcil.co.in', 'onlinesbi.com', 'sbi.com', 'sbicard.com', 'sbigeneral.in', 'yonosbi.com',
+]);
+
 // Unicode look-alikes folded to their Latin twin.
 const CONFUSABLES: Record<string, string> = {
   а: 'a', е: 'e', о: 'o', р: 'p', с: 'c', х: 'x', у: 'y',
@@ -82,6 +89,7 @@ export function checkBrandLookalike(domain: string): [string, string] | null {
     const b = brand.toLowerCase();
     if (raw === b || raw.endsWith('.' + b)) return null; // is (a subdomain of) the real brand
   }
+  if (LEGIT_NEAR_BRANDS.has(raw) || [...LEGIT_NEAR_BRANDS].some((d) => raw.endsWith('.' + d))) return null;
 
   const uni = decodeIdna(raw);
   const skel = skeleton(uni);

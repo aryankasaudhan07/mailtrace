@@ -15,6 +15,7 @@ import { resolveTxt } from 'node:dns/promises';
 import { dkimVerify } from 'mailauth/lib/dkim/verify';
 import { spf as mailauthSpf } from 'mailauth/lib/spf';
 import { Analyzer, clear, triggered, unavailable, type Evidence } from '../schemas/evidence';
+import { registrableDomain } from './domains';
 import { headerValues, type ParsedEmail } from '../schemas/email';
 import { register } from './base';
 import { authenticatedOrigin } from './m2_headers';
@@ -35,6 +36,7 @@ export async function dkimResolver(name: string, rr: string): Promise<string[][]
 }
 
 const DMARC_P_RE = /[;\s]p\s*=\s*(\w+)/i;
+const DMARC_SP_RE = /[;\s]sp\s*=\s*(\w+)/i;
 const DKIM_D_RE = /[;\s]d\s*=\s*([^;]+)/i;
 
 export type TxtResolver = (name: string) => Promise<string[][]>;
@@ -185,28 +187,41 @@ function isDnsNetworkError(e: unknown): boolean {
 
 export interface DmarcLookup { policy: string | null; unavailable: boolean }
 
+async function lookupDmarc(domain: string, txt: TxtResolver): Promise<{ found: boolean; p: string | null; sp: string | null; netErr: boolean }> {
+  try {
+    const records = await txt(`_dmarc.${domain}`);
+    for (const rr of records) {
+      const s = rr.join('');
+      if (s.toLowerCase().startsWith('v=dmarc1')) {
+        const pm = DMARC_P_RE.exec(s);
+        const spm = DMARC_SP_RE.exec(s);
+        return { found: true, p: pm ? pm[1].toLowerCase() : 'none', sp: spm ? spm[1].toLowerCase() : null, netErr: false };
+      }
+    }
+    return { found: false, p: null, sp: null, netErr: false };
+  } catch (e) {
+    return { found: false, p: null, sp: null, netErr: isDnsNetworkError(e) };
+  }
+}
+
+// DMARC record discovery per RFC 7489 / 9989: the EXACT From domain, then the
+// organisational domain. A subdomain with no record of its own is governed by
+// the org domain's sp= (subdomain policy) when present, else its p=. (No walk of
+// arbitrary intermediate labels, which real DMARC does not consult.)
 export async function dmarcPolicy(domain: string, txt: TxtResolver = defaultTxt): Promise<DmarcLookup> {
   if (!domain) return { policy: null, unavailable: false };
-  const labels = domain.split('.');
-  let sawNetworkError = false;
-  for (let i = 0; i < labels.length - 1; i++) {
-    const candidate = labels.slice(i).join('.');
-    try {
-      const records = await txt(`_dmarc.${candidate}`);
-      for (const rr of records) {
-        const s = rr.join('');
-        if (s.toLowerCase().startsWith('v=dmarc1')) {
-          const m = DMARC_P_RE.exec(s);
-          return { policy: m ? m[1].toLowerCase() : 'none', unavailable: false };
-        }
-      }
-    } catch (e) {
-      if (isDnsNetworkError(e)) sawNetworkError = true; // NXDOMAIN/ENODATA just means "no record here" — keep walking
-    }
+  const exact = await lookupDmarc(domain, txt);
+  if (exact.found) return { policy: exact.p, unavailable: false };
+  let netErr = exact.netErr;
+  const org = registrableDomain(domain);
+  if (org && org !== domain) {
+    const orgRec = await lookupDmarc(org, txt);
+    if (orgRec.found) return { policy: orgRec.sp ?? orgRec.p, unavailable: false };
+    netErr = netErr || orgRec.netErr;
   }
   // No policy found. If DNS was actually unreachable we cannot conclude "no
   // policy"; report unavailable so the caller emits UNAVAILABLE, not a clean pass.
-  return { policy: null, unavailable: sawNetworkError };
+  return { policy: null, unavailable: netErr };
 }
 
 async function defaultTxt(name: string): Promise<string[][]> {

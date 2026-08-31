@@ -14,12 +14,25 @@ import { Analyzer, clear, triggered, type Evidence } from '../schemas/evidence';
 import { HopTrust, headerValues, type Hop, type ParsedEmail } from '../schemas/email';
 import { register } from './base';
 import { cleanIp, ipInCidrs, isUnroutableIp, parseCidr } from './ip';
+import { sameOrgDomain } from './domains';
 
 const FROM_RE = /\bfrom\s+([A-Za-z0-9._-]+)?\s*(?:\((?:([A-Za-z0-9._-]+)\s*)?\[([0-9a-fA-F:.]+)\]\))?/i;
 const BY_RE = /\bby\s+([A-Za-z0-9._-]+)/i;
 const WITH_RE = /\bwith\s+([A-Za-z0-9]+)/i;
 const BARE_IP_RE = /\[([0-9a-fA-F:.]+)\]/;
 const REPLY_PREFIX_RE = /^\s*(re|fwd|fw)\s*(\[\d+\])?\s*:/i;
+
+// Parse a Received-clause date. `new Date()` reads a timezone-less RFC 5322 date
+// as SERVER-local time (host-dependent, and it corrupts the cross-hop
+// monotonicity check). RFC 5322 §3.3 says a missing zone means "-0000" (UTC with
+// unknown local offset), so pin it to UTC when no explicit zone is present.
+function parseHopDate(value: string): string | null {
+  let s = value.trim();
+  const hasZone = /[+-]\d{4}\b/.test(s) || /\b(UT|GMT|Z|[ECMP][SD]T)\b/.test(s);
+  if (!hasZone) s += ' +0000';
+  const d = new Date(s);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
 
 export function parseHops(email: ParsedEmail): Hop[] {
   const received = headerValues(email, 'received');
@@ -48,8 +61,7 @@ export function parseHops(email: ParsedEmail): Hop[] {
 
     let ts: string | null = null;
     if (flat.includes(';')) {
-      const d = new Date(flat.split(';').pop()!.trim());
-      if (!Number.isNaN(d.getTime())) ts = d.toISOString();
+      ts = parseHopDate(flat.split(';').pop()!.trim());
     }
 
     const hop: Hop = {
@@ -186,7 +198,9 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
   // BEC reply-diversion triangle
   const fromDom = domainOf(email.from_addr);
   const replyDom = domainOf(email.reply_to);
-  if (fromDom && replyDom && fromDom !== replyDom) {
+  // Same organisation (registrable domain) is NOT a mismatch: a brand mailing
+  // from news@mail.brand.com with Reply-To support@brand.com is legitimate.
+  if (fromDom && replyDom && !sameOrgDomain(fromDom, replyDom)) {
     ev.push(
       triggered(caseId, Analyzer.M2_HEADERS, 'reply_to_domain_mismatch', {
         from_domain: fromDom,
