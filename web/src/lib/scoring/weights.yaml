@@ -10,7 +10,7 @@
 #
 # Owner: Track E
 
-version: "1.5.4"
+version: "1.6.0"
 
 bands:
   benign: [0, 24]
@@ -184,6 +184,16 @@ signals:
     analyzer: M4
     label: "Credential harvesting intent detected"
     rationale: "Login-themed urgency plus an off-domain form target."
+
+  gift_card_scam:
+    weight: 15
+    analyzer: M4
+    label: "Gift-card purchase scam"
+    rationale: >
+      A request to BUY gift cards and send back the codes is a high-frequency BEC
+      variant that changes no bank details (so payment_diversion misses it) and
+      often names no executive. Distinct, high-precision, high-loss -- scored on
+      its own.
 
   hidden_text_mismatch:
     weight: 16
