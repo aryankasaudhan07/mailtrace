@@ -15,7 +15,7 @@ import { resolveTxt } from 'node:dns/promises';
 import { dkimVerify } from 'mailauth/lib/dkim/verify';
 import { spf as mailauthSpf } from 'mailauth/lib/spf';
 import { Analyzer, clear, triggered, unavailable, type Evidence } from '../schemas/evidence';
-import { registrableDomain } from './domains';
+import { registrableDomain, sameOrgDomain } from './domains';
 import { headerValues, type ParsedEmail } from '../schemas/email';
 import { register } from './base';
 import { authenticatedOrigin } from './m2_headers';
@@ -46,12 +46,12 @@ function domainOf(addr: string | null): string {
   return addr.split('@').pop()!.trim().toLowerCase().replace(/>$/, '');
 }
 
-/** Relaxed alignment: same domain, or one is the other's organizational parent. */
+/** DMARC relaxed alignment: identical, or the same registrable (organisational)
+ *  domain per the Public Suffix List. Uses PSL private suffixes, so a signature
+ *  from a shared platform (d=herokuapp.com) does NOT align with a tenant
+ *  (From @victim.herokuapp.com) -- the naive suffix match used to. */
 export function aligned(a: string, b: string): boolean {
-  if (!a || !b) return false;
-  a = a.toLowerCase();
-  b = b.toLowerCase();
-  return a === b || a.endsWith('.' + b) || b.endsWith('.' + a);
+  return sameOrgDomain(a, b);
 }
 
 export function dkimSigningDomains(email: ParsedEmail): string[] {

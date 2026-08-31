@@ -1,35 +1,39 @@
 /**
  * Shared domain helpers. Kept in its own module (not m7_graph) so header/auth
- * analyzers can use `registrableDomain` without importing m7_graph, which
- * imports back from m2_headers (that would be a circular dependency).
+ * analyzers can use them without importing m7_graph, which imports back from
+ * m2_headers (that would be a circular dependency).
  *
- * NOTE: this is a small curated two-label-suffix list, not the full Public
- * Suffix List / RFC 9989 DNS Tree Walk. It is good enough for organisational
- * grouping of the domains we see; true PSL-grade alignment is a separate task.
+ * `registrableDomain` uses the bundled Public Suffix List (via tldts) with
+ * PRIVATE suffixes enabled, so shared platforms are treated as separate
+ * organisations: victim.herokuapp.com and other.herokuapp.com have DIFFERENT
+ * registrable domains and therefore do NOT align. (DMARC record DISCOVERY still
+ * uses the DNS lookups in m3_auth per RFC 7489/9989; this is the offline
+ * organisational-domain comparison used for alignment/heuristics.)
  */
-const TWO_LABEL_SUFFIXES = new Set([
-  'co.in', 'ac.in', 'gov.in', 'org.in', 'net.in', 'edu.in', 'res.in', 'nic.in',
-  'co.uk', 'org.uk', 'gov.uk', 'ac.uk', 'com.au', 'co.jp', 'com.br',
-]);
+import { getDomain } from 'tldts';
 
-/** The registrable ("organisational") domain, e.g. mail.brand.co.in -> brand.co.in. */
-export function registrableDomain(host: string): string | null {
-  const labels = host.toLowerCase().replace(/^\.+|\.+$/g, '').split('.');
-  if (labels.length < 2) return null;
-  const lastTwo = labels.slice(-2).join('.');
-  const take = TWO_LABEL_SUFFIXES.has(lastTwo) ? 3 : 2;
-  if (labels.length < take) return null;
-  return labels.slice(-take).join('.');
+/** The registrable ("organisational") domain, e.g. mail.brand.co.in -> brand.co.in,
+ *  victim.herokuapp.com -> victim.herokuapp.com. null for a bare public suffix,
+ *  an IP, or an unparseable host. */
+export function registrableDomain(host: string | null | undefined): string | null {
+  if (!host) return null;
+  const clean = host.trim().toLowerCase().replace(/^\.+|\.+$/g, '');
+  if (!clean) return null;
+  return getDomain(clean, { allowPrivateDomains: true }) ?? null;
 }
 
-/** True when two hostnames belong to the same organisation (registrable domain
- *  equal, or one is a subdomain of the other). */
+/** True when two hostnames belong to the same organisation. This is DMARC
+ *  RELAXED alignment: identical, or the SAME registrable (organisational)
+ *  domain. It deliberately does NOT treat "b is a subdomain of a" as aligned in
+ *  general -- that would make a public/private suffix (herokuapp.com) align with
+ *  every tenant beneath it. Same-org subdomains already share a registrable
+ *  domain, so they still match. */
 export function sameOrgDomain(a: string | null, b: string | null): boolean {
   if (!a || !b) return false;
   a = a.toLowerCase();
   b = b.toLowerCase();
-  if (a === b || a.endsWith(`.${b}`) || b.endsWith(`.${a}`)) return true;
+  if (a === b) return true;
   const ra = registrableDomain(a);
   const rb = registrableDomain(b);
-  return !!ra && ra === rb;
+  return !!ra && !!rb && ra === rb;
 }
