@@ -10,13 +10,15 @@
 #
 # Owner: Track E
 
-version: "1.6.0"
+version: "1.7.0"
 
+# Band boundaries. These MUST match bandFromScore() in schemas/verdict.ts and
+# the UI: 1-25 clean, 26-50 suspicious, 51-75 high risk, 76-100 critical.
 bands:
-  benign: [0, 24]
-  suspicious: [25, 49]
-  high_risk: [50, 74]
-  critical: [75, 100]
+  benign: [0, 25]
+  suspicious: [26, 50]
+  high_risk: [51, 75]
+  critical: [76, 100]
 
 # Confidence penalty applied per analyzer lane that could not run.
 # Four lanes down and the verdict is explicitly low-confidence.
@@ -43,6 +45,13 @@ suppress_negatives_when_any_triggered:
   - payment_diversion_intent
   - credential_harvest_intent
   - executive_impersonation
+  # content-deception signals: a valid DKIM signature (compromised mailbox) or a
+  # known-correspondent history must NOT cancel out evidence of deception.
+  - gift_card_scam
+  - classifier_phishing_high
+  - hidden_text_mismatch
+  - obfuscated_text
+  - fake_reply
 
 # M8 legitimacy credits (below) are negative signals that get their OWN, narrower
 # suppressor set. Rationale: an aged, widely-registered sender address is strong
@@ -65,6 +74,18 @@ identity_credit_suppressors:
   - brand_lookalike_domain
   - reply_to_domain_mismatch
   - payment_diversion_intent
+  # An aged, widely-registered address is legitimacy evidence UNTIL the message
+  # carries a HIGH-PRECISION attack payload. A compromised real mailbox (account
+  # takeover / thread hijack) is exactly the high-loss case, so unambiguous
+  # attacks cancel the identity credit too. Deliberately NOT the softer,
+  # FP-prone heuristics (credential_harvest_intent, classifier_phishing_high):
+  # those must not flag a legit aged sender who merely writes alarming-sounding
+  # mail (see the identity-credit guard test).
+  - gift_card_scam
+  - executive_impersonation
+  - hidden_text_mismatch
+  - obfuscated_text
+  - fake_reply
 
 signals:
 

@@ -9,7 +9,9 @@ venv/
 # Intel databases — NEVER commit these.
 # MaxMind's licence forbids redistribution outside CC BY-SA terms, and they are large.
 # Run scripts/fetch_intel.sh instead.
-intel/
+# Anchored to the repo-root runtime dir only, so small fake test fixtures under
+# web/test/fixtures/intel/ (needed for reproducible M5 tests) are NOT ignored.
+/intel/
 *.mmdb
 *.mmdb.gz
 

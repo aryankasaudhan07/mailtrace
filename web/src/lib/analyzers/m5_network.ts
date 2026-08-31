@@ -149,13 +149,27 @@ export async function analyze(caseId: string, email: ParsedEmail): Promise<Evide
     : hasGeoip ? await geoipLookup(originHop.from_ip!) : null;
 
   if (!ev.length) {
-    const detail: Record<string, unknown> = {
-      ip: originHop.from_ip,
-      hops_checked: routable.length,
-      explanation: `No hop in the chain (${routable.length} routable) matches Tor, VPN or datacenter ranges.`,
-    };
-    if (geo) detail.geo = geo;
-    ev.push(clear(caseId, Analyzer.M5_NETWORK, 'origin_anonymized', detail));
+    // Only assert "not anonymized" for dimensions we actually evaluated. ip-api
+    // (online) covers proxy+hosting; offline, each dimension needs its own intel
+    // file. If a dimension couldn't be checked, that's UNAVAILABLE, not a clean
+    // pass — otherwise a VPN/datacenter origin is silently reported as clean.
+    const anonEvaluable = Boolean(online) || (hasTor && hasVpn);
+    const dcEvaluable = Boolean(online) || hasDatacenter;
+    if (!anonEvaluable || !dcEvaluable) {
+      const missing: string[] = [];
+      if (!anonEvaluable) missing.push('Tor/VPN');
+      if (!dcEvaluable) missing.push('datacenter');
+      ev.push(unavailable(caseId, Analyzer.M5_NETWORK, 'origin_anonymized',
+        `Origin ${missing.join(' & ')} classification unavailable (no intel and ip-api.com not used) — cannot confirm the origin is not anonymized.`));
+    } else {
+      const detail: Record<string, unknown> = {
+        ip: originHop.from_ip,
+        hops_checked: routable.length,
+        explanation: `No hop in the chain (${routable.length} routable) matches Tor, VPN or datacenter ranges.`,
+      };
+      if (geo) detail.geo = geo;
+      ev.push(clear(caseId, Analyzer.M5_NETWORK, 'origin_anonymized', detail));
+    }
   }
 
   return ev;

@@ -110,7 +110,7 @@ describe('M3 DMARC decision (offline via injected TXT resolver)', () => {
   it('reject policy + not authenticated -> dmarc_fail_strict', async () => {
     const txt = async (name: string) =>
       name === '_dmarc.acme.example' ? [['v=DMARC1; p=reject']] : Promise.reject(new Error('nx'));
-    expect(await dmarcPolicy('acme.example', txt)).toBe('reject');
+    expect((await dmarcPolicy('acme.example', txt)).policy).toBe('reject');
     const ev = await verifyDmarc('c', await email(), false, txt);
     expect(ev?.signal).toBe('dmarc_fail_strict');
   });
@@ -124,7 +124,7 @@ describe('M3 DMARC decision (offline via injected TXT resolver)', () => {
 
   it('no published policy -> no finding', async () => {
     const txt = async () => Promise.reject(new Error('nx'));
-    expect(await dmarcPolicy('acme.example', txt)).toBeNull();
+    expect((await dmarcPolicy('acme.example', txt)).policy).toBeNull();
     const ev = await verifyDmarc('c', await email(), false, txt);
     expect(ev).toBeNull();
   });
