@@ -125,24 +125,36 @@ async function otpResponse(otp: string, sent: boolean, detail: string) {
 }
 
 async function sendOtpEmail(to: string, otp: string, purpose: string): Promise<{ sent: boolean; detail: string }> {
-  const key = process.env.BREVO_API_KEY;
-  const from = process.env.MAIL_FROM || process.env.SMTP_FROM;
-  if (!key) return { sent: false, detail: 'not_configured' };
-  if (!from) return { sent: false, detail: 'brevo_needs_sender (set MAIL_FROM)' };
+  const host = process.env.SMTP_HOST || 'smtp.gmail.com';
+  const user = process.env.SMTP_USER;
+  // Gmail shows App Passwords as 'abcd efgh ijkl mnop' — accept any spacing/dashes.
+  const pass = (process.env.SMTP_PASSWORD || process.env.SMTP_PASS || '').replace(/[\s-]/g, '');
+  const from = process.env.MAIL_FROM || process.env.SMTP_FROM || user;
+  if (!user || !pass) return { sent: false, detail: 'not_configured' };
+  if (!from) return { sent: false, detail: 'smtp_needs_sender (set MAIL_FROM)' };
+  const port = Number(process.env.SMTP_PORT || 587);
   try {
-    const r = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: { 'api-key': key, 'content-type': 'application/json', accept: 'application/json' },
-      body: JSON.stringify({
-        sender: { email: from, name: 'Mailtrace' },
-        to: [{ email: to }],
-        subject: `Your Mailtrace code to ${purpose}`,
-        textContent: `Your Mailtrace verification code is: ${otp}\n\nUse it to ${purpose}. It expires in 10 minutes.`,
-      }),
+    const { createTransport } = await import('nodemailer');
+    const transport = createTransport({
+      host,
+      port,
+      secure: port === 465, // 465 = implicit TLS; 587 = STARTTLS
+      auth: { user, pass },
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 15_000,
     });
-    return r.status === 200 || r.status === 201 ? { sent: true, detail: '' } : { sent: false, detail: `brevo ${r.status}` };
+    await transport.sendMail({
+      from: `"Mailtrace" <${from}>`,
+      to,
+      subject: `Your Mailtrace code to ${purpose}`,
+      text: `Your Mailtrace verification code is: ${otp}\n\nUse it to ${purpose}. It expires in 10 minutes.`,
+    });
+    return { sent: true, detail: '' };
   } catch (e) {
-    return { sent: false, detail: `${(e as Error).name}` };
+    // Never raise: a failed send is evidence, and the caller falls back to demo_otp.
+    const err = e as Error & { code?: string };
+    return { sent: false, detail: err.code ? `smtp ${err.code}` : err.name };
   }
 }
 
