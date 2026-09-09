@@ -5,7 +5,11 @@ import {
 
 beforeEach(() => {
   __resetAuth();
-  delete process.env.BREVO_API_KEY; // demo-otp path
+  // Force the demo-otp path: with SMTP creds present these tests would
+  // attempt a real send (slow, flaky, and actually emails someone).
+  delete process.env.SMTP_USER;
+  delete process.env.SMTP_PASSWORD;
+  delete process.env.SMTP_PASS;
 });
 
 describe('auth', () => {

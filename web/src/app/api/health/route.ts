@@ -8,7 +8,10 @@ export const dynamic = 'force-dynamic';
 
 export async function GET() {
   const rules = loadRules();
-  const emailConfigured = Boolean(process.env.BREVO_API_KEY);
+  // SMTP (nodemailer) is the transport; MAIL_FROM falls back to SMTP_USER.
+  const emailConfigured = Boolean(
+    process.env.SMTP_USER && (process.env.SMTP_PASSWORD || process.env.SMTP_PASS),
+  );
   return json({
     status: 'ok',
     fixture_mode: config.fixtureMode(),
@@ -16,7 +19,7 @@ export async function GET() {
     signals_defined: Object.keys(rules.signals).length,
     analyzers_registered: [...registry().keys()].sort(),
     email_configured: emailConfigured,
-    email_transport: emailConfigured ? 'brevo' : 'none',
+    email_transport: emailConfigured ? 'smtp' : 'none',
     // non-secret diagnostic: the MX hosts the trust boundary treats as our infra
     trusted_hosts: [...config.trustedHosts()],
   });
