@@ -20,7 +20,7 @@ docker compose up --build                  # full stack, needed from phase 4
 
 ## Architecture in one paragraph
 
-One parser (`app/ingest/parser.py`) produces a `ParsedEmail`. Six analyzers run
+One parser (`app/ingest/parser.py`) produces a `ParsedEmail`. Seven analyzers run
 concurrently and each emits a list of `Evidence` records. One scorer
 (`app/scoring/engine.py`) reads the whole evidence set and produces the only
 verdict. Analyzers never talk to each other and never produce a score.
@@ -155,7 +155,7 @@ Ask before editing another track's module; suggest the change instead.
 | C | M4 | `analyzers/m4_content.py` |
 | D | M5, intel | `analyzers/m5_network.py`, `scripts/fetch_intel.sh` |
 | E | M7, M8, M10 | `analyzers/m7_graph.py`, `scoring/`, reporting |
-| F | M9 | the React app, `fixtures/` |
+| F | M9 | the Next.js app (`web/`), `fixtures/` |
 
 ## What not to do
 

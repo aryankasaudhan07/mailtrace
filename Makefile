@@ -30,27 +30,27 @@ logs: ## Tail logs from the running Docker stack
 	docker compose logs -f
 
 .PHONY: dev
-dev: ## Run API + UI locally without Docker (API :8000, UI :5173)
-	@echo "Starting API on :8000 and UI on :5173  (Ctrl-C to stop both)"
+dev: ## Run API + UI locally without Docker (API :8000, UI :3000)
+	@echo "Starting API on :8000 and UI on :3000  (Ctrl-C to stop both)"
 	@$(UVICORN) app.main:app --port 8000 & API_PID=$$!; \
 	trap 'kill $$API_PID 2>/dev/null' EXIT INT TERM; \
-	cd frontend && PATH="$(NODE_BIN):$$PATH" npm run dev
+	PATH="$(NODE_BIN):$$PATH" npm --prefix web run dev
 
 .PHONY: api
 api: ## Run only the backend API (:8000)
 	$(UVICORN) app.main:app --reload --port 8000
 
 .PHONY: web
-web: ## Run only the frontend dev server (:5173)
-	cd frontend && PATH="$(NODE_BIN):$$PATH" npm run dev
+web: ## Run only the web UI dev server (:3000)
+	PATH="$(NODE_BIN):$$PATH" npm --prefix web run dev
 
 # ---------------------------------------------------------------------------
 ##@ Setup & quality
 
 .PHONY: setup
-setup: ## Install backend (venv) and frontend (npm) dependencies
+setup: ## Install backend (venv) and web (npm) dependencies
 	$(PY) -m pip install -r requirements.txt
-	cd frontend && PATH="$(NODE_BIN):$$PATH" npm ci
+	PATH="$(NODE_BIN):$$PATH" npm --prefix web ci
 
 .PHONY: test
 test: ## Run backend tests and lint
@@ -58,12 +58,12 @@ test: ## Run backend tests and lint
 	$(PY) -m ruff check app tests
 
 .PHONY: build
-build: ## Production build of the frontend
-	cd frontend && PATH="$(NODE_BIN):$$PATH" npm run build
+build: ## Production build of the web app
+	PATH="$(NODE_BIN):$$PATH" npm --prefix web run build
 
 .PHONY: clean
 clean: ## Remove build artefacts and caches
-	rm -rf frontend/dist .pytest_cache .ruff_cache
+	rm -rf web/.next .pytest_cache .ruff_cache
 	find . -name __pycache__ -type d -prune -exec rm -rf {} +
 
 # ---------------------------------------------------------------------------
