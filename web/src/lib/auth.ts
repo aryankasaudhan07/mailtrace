@@ -10,6 +10,7 @@ import { pbkdf2Sync, randomBytes, randomInt, createHmac, timingSafeEqual } from 
 const TTL = 60 * 60 * 12; // 12h tokens
 const ITER = 200_000;
 const OTP_TTL = 600; // 10 min
+const OTP_LEN = 6;
 
 const secret = () => process.env.AUTH_SECRET || 'dev-insecure-secret-change-me';
 const useKv = () => Boolean(process.env.KV_REST_API_URL || process.env.KV_URL);
@@ -49,8 +50,8 @@ async function putUser(email: string, u: User): Promise<void> {
 }
 
 function eq(a: string, b: string): boolean {
-  const ba = Buffer.from(a);
-  const bb = Buffer.from(b);
+  const ba = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
   return ba.length === bb.length && timingSafeEqual(ba, bb);
 }
 
@@ -110,7 +111,7 @@ export async function updateProfile(token: string, patch: { name?: string }): Pr
 
 // --- OTP helpers ------------------------------------------------------------
 function newOtp(): string {
-  return String(randomInt(0, 1_000_000)).padStart(6, '0');
+  return String(randomInt(0, 1_000_000)).padStart(OTP_LEN, '0');
 }
 
 async function otpResponse(otp: string, sent: boolean, detail: string) {
@@ -163,11 +164,17 @@ async function putOtp(email: string, code: string): Promise<void> {
   if (useKv()) await (await kvClient()).set(`otp:${email}`, code, { ex: OTP_TTL });
   else memOtp.set(email, { code, exp });
 }
+/** KV round-trips values as JSON, so a code stored as "029048" comes back as the
+ *  number 29048 — coerce to string and re-pad so leading zeros survive. */
+function norm6(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  return String(v).trim().padStart(OTP_LEN, '0');
+}
 async function takeOtp(email: string): Promise<string | null> {
-  if (useKv()) return ((await (await kvClient()).get(`otp:${email}`)) as string | null) ?? null;
+  if (useKv()) return norm6(await (await kvClient()).get(`otp:${email}`));
   const r = memOtp.get(email);
   if (!r || r.exp < Date.now() / 1000) return null;
-  return r.code;
+  return norm6(r.code);
 }
 
 // --- password reset ---------------------------------------------------------
@@ -186,7 +193,7 @@ export async function resetVerify(email: string, otp: string, password: string) 
   const e = norm(email);
   const code = await takeOtp(e);
   if (!code) throw new HttpError(400, 'Code expired or not requested — request a new one');
-  if (!eq(code, otp.trim())) throw new HttpError(400, 'Incorrect code');
+  if (!eq(code, String(otp).trim())) throw new HttpError(400, 'Incorrect code');
   const u = await getUser(e);
   if (!u) throw new HttpError(404, 'No account found with that email');
   if (password.length < 6) throw new HttpError(400, 'New password must be at least 6 characters');
@@ -217,7 +224,7 @@ export async function registerVerify(email: string, otp: string) {
   if (useKv()) rec = ((await (await kvClient()).get(`pending:${e}`)) as typeof rec) ?? null;
   else { const m = memPending.get(e); rec = m && m.exp >= Date.now() / 1000 ? m : null; }
   if (!rec) throw new HttpError(400, 'Code expired or not requested — start again');
-  if (!eq(rec.code, otp.trim())) throw new HttpError(400, 'Incorrect code');
+  if (!eq(rec.code, String(otp).trim())) throw new HttpError(400, 'Incorrect code');
   if (await getUser(e)) throw new HttpError(409, 'An account with that email already exists');
   const salt = randomBytes(16).toString('hex');
   await putUser(e, { name: rec.name, role: 'Analyst', salt, hash: hashPw(rec.password, salt) });
