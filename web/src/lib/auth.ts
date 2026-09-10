@@ -125,7 +125,19 @@ async function otpResponse(otp: string, sent: boolean, detail: string) {
   return resp;
 }
 
-async function sendOtpEmail(to: string, otp: string, purpose: string): Promise<{ sent: boolean; detail: string }> {
+/** Distinct subjects per flow: a shared prefix makes Gmail thread the two
+ *  emails into one conversation and show the older subject. */
+interface OtpPurpose { subject: string; action: string }
+const OTP_RESET: OtpPurpose = {
+  subject: 'Reset your Mailtrace password',
+  action: 'reset your password',
+};
+const OTP_REGISTER: OtpPurpose = {
+  subject: 'Verify your new Mailtrace account',
+  action: 'verify your new account',
+};
+
+async function sendOtpEmail(to: string, otp: string, purpose: OtpPurpose): Promise<{ sent: boolean; detail: string }> {
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const user = process.env.SMTP_USER;
   // Gmail shows App Passwords as 'abcd efgh ijkl mnop' — accept any spacing/dashes.
@@ -148,8 +160,8 @@ async function sendOtpEmail(to: string, otp: string, purpose: string): Promise<{
     await transport.sendMail({
       from: `"Mailtrace" <${from}>`,
       to,
-      subject: `Your Mailtrace code to ${purpose}`,
-      text: `Your Mailtrace verification code is: ${otp}\n\nUse it to ${purpose}. It expires in 10 minutes.`,
+      subject: purpose.subject,
+      text: `Your Mailtrace verification code is: ${otp}\n\nUse it to ${purpose.action}. It expires in 10 minutes.`,
     });
     return { sent: true, detail: '' };
   } catch (e) {
@@ -184,7 +196,7 @@ export async function resetRequest(email: string) {
   if (!(await getUser(e))) throw new HttpError(404, 'No account found with that email');
   const otp = newOtp();
   await putOtp(e, otp);
-  const { sent, detail } = await sendOtpEmail(e, otp, 'reset your password');
+  const { sent, detail } = await sendOtpEmail(e, otp, OTP_RESET);
   return otpResponse(otp, sent, detail);
 }
 
@@ -213,7 +225,7 @@ export async function registerRequest(email: string, password: string, name?: st
   const rec = { code: otp, exp: Date.now() / 1000 + OTP_TTL, name: name || e.split('@')[0], password };
   if (useKv()) await (await kvClient()).set(`pending:${e}`, rec, { ex: OTP_TTL });
   else memPending.set(e, rec);
-  const { sent, detail } = await sendOtpEmail(e, otp, 'verify your new account');
+  const { sent, detail } = await sendOtpEmail(e, otp, OTP_REGISTER);
   return otpResponse(otp, sent, detail);
 }
 
