@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Mail, Cpu, MapPin, Scale, ShieldCheck, User, Lock, KeyRound, Eye, EyeOff, ArrowRight, Clock, Loader2,
 } from 'lucide-react'
@@ -16,6 +16,18 @@ const FEATURES = [
 export default function Login() {
   const nav = useNavigate()
   const { login, registerRequest, registerVerify, resetRequest, resetVerify } = useAuth()
+  // Live clock: re-render every second, aligned to the next whole second so the
+  // displayed time flips when the wall clock does rather than drifting.
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    let interval
+    const start = setTimeout(() => {
+      setNow(new Date())
+      interval = setInterval(() => setNow(new Date()), 1000)
+    }, 1000 - (Date.now() % 1000))
+    return () => { clearTimeout(start); clearInterval(interval) }
+  }, [])
+
   const [mode, setMode] = useState('login')          // login | register | reset
   const [step, setStep] = useState('request')        // register/reset sub-step: request | verify
   const [show, setShow] = useState(false)
@@ -83,7 +95,7 @@ export default function Login() {
         <div className="brand"><div className="brand-badge"><Mail size={18} /></div><b>Mailtrace</b></div>
         <div className="login-top-right">
           <span className="online"><i /> System Online</span>
-          <span className="dim"><Clock size={13} /> {new Date().toLocaleString()}</span>
+          <span className="dim"><Clock size={13} /> {now.toLocaleString()}</span>
         </div>
       </header>
 
