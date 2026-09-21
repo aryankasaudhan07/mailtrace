@@ -18,6 +18,8 @@ export async function GET() {
     scorer_version: rules.version,
     signals_defined: Object.keys(rules.signals).length,
     analyzers_registered: [...registry().keys()].sort(),
+    // non-secret diagnostic: is a real signing key configured?
+    auth_secret_configured: Boolean(process.env.AUTH_SECRET),
     email_configured: emailConfigured,
     email_transport: emailConfigured ? 'smtp' : 'none',
     // non-secret diagnostic: the MX hosts the trust boundary treats as our infra

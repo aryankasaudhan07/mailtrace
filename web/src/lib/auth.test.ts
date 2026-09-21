@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
-  __resetAuth, login, me, resetRequest, resetVerify, registerRequest, registerVerify, updateProfile, HttpError,
+  __resetAuth, login, me, resetRequest, resetVerify, registerRequest, registerVerify, updateProfile, signToken, HttpError,
 } from './auth';
 
 beforeEach(() => {
@@ -65,5 +65,24 @@ describe('auth', () => {
     const r = await login('admin@mailtrace.io', 'demo1234');
     await expect(updateProfile(r.token, { name: '   ' })).rejects.toMatchObject({ status: 400 });
     await expect(updateProfile('bad-token', { name: 'X' })).rejects.toMatchObject({ status: 401 });
+  });
+
+  it('refuses to sign tokens with the public dev secret in production', () => {
+    try {
+      // vi.stubEnv keeps NODE_ENV type-safe (Next types it read-only) and
+      // restores it for us.
+      vi.stubEnv('AUTH_SECRET', '');
+      vi.stubEnv('NODE_ENV', 'production');
+      delete process.env.AUTH_SECRET;
+      // Fails closed: the dev fallback is published in this source file, so
+      // using it in production would let anyone forge a session for any account.
+      expect(() => signToken('admin@mailtrace.io')).toThrow(/AUTH_SECRET is not set/);
+
+      // With a real secret configured it signs normally.
+      vi.stubEnv('AUTH_SECRET', 'a'.repeat(64));
+      expect(signToken('admin@mailtrace.io')).toMatch(/\./);
+    } finally {
+      vi.unstubAllEnvs();
+    }
   });
 });

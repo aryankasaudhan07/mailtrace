@@ -12,7 +12,21 @@ const ITER = 200_000;
 const OTP_TTL = 600; // 10 min
 const OTP_LEN = 6;
 
-const secret = () => process.env.AUTH_SECRET || 'dev-insecure-secret-change-me';
+const DEV_SECRET = 'dev-insecure-secret-change-me';
+/** Token-signing key. The dev fallback is published in this source file, so
+ *  falling back to it in production would let anyone forge a session for any
+ *  account. Fail closed instead. */
+const secret = (): string => {
+  const configured = process.env.AUTH_SECRET;
+  if (configured) return configured;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'AUTH_SECRET is not set. Refusing to sign or verify tokens with the public ' +
+      'dev secret. Generate one with `openssl rand -hex 32` and set it in the environment.',
+    );
+  }
+  return DEV_SECRET;
+};
 const useKv = () => Boolean(process.env.KV_REST_API_URL || process.env.KV_URL);
 
 export interface User { name: string; role: string; salt: string; hash: string }
