@@ -83,7 +83,11 @@
    sit on any more. */
 .authwrap { display: grid; place-items: center; }
 .authcard {
-  position: relative; overflow: hidden;
+  position: relative;
+  /* clip, not hidden: `hidden` makes this a scroll container, and the browser
+     then scrolls it sideways when focus moves to a link near the edge —
+     which slid every field 50px out of the pane. `clip` can't scroll. */
+  overflow: hidden; overflow: clip;
   width: 100%; max-width: 424px;
   color: #f4f1ea;
   border-radius: 28px; padding: 36px 32px;
@@ -103,8 +107,8 @@
 }
 /* specular highlight: light catching the top curve of the pane */
 .authcard::before {
-  content: ''; position: absolute; left: -12%; right: -12%; top: -55%; height: 95%;
-  background: radial-gradient(58% 100% at 50% 100%, rgba(255,255,255,.28), transparent 72%);
+  content: ''; position: absolute; left: 0; right: 0; top: -55%; height: 95%;
+  background: radial-gradient(72% 100% at 50% 100%, rgba(255,255,255,.28), transparent 72%);
   pointer-events: none;
 }
 /* slow drift, so the glass feels alive rather than painted on */
@@ -133,7 +137,7 @@
     inset 0 -1px 0 rgba(255,255,255,.06);
 }
 :root[data-theme="dark"] .authcard::before {
-  background: radial-gradient(58% 100% at 50% 100%, rgba(255,255,255,.17), transparent 72%);
+  background: radial-gradient(72% 100% at 50% 100%, rgba(255,255,255,.17), transparent 72%);
 }
 :root[data-theme="dark"] .authcard .field {
   background: rgba(255,255,255,.075);
@@ -204,12 +208,35 @@
   background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
 }
 
-.auth-err { background: rgba(255,90,80,.16); color: #ffb4ad; border: 1px solid rgba(255,90,80,.34);
-  border-radius: 12px; padding: 10px 13px; font-size: .84rem; line-height: 1.5;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+/* the register / reset code field: read it as digits, not as prose */
+.authcard .field input[inputmode="numeric"] {
+  letter-spacing: .32em; font-variant-numeric: tabular-nums; font-size: .98rem;
+}
+.authcard .field input[inputmode="numeric"]::placeholder { letter-spacing: normal; }
+
+/* Status panels — only register and reset ever show these, so they are the one
+   part of the card the login page never exercised. Same glass as the pane they
+   sit in: tinted, blurred, lit along the top edge. */
+.auth-err, .auth-info {
+  border-radius: 12px; padding: 11px 13px; font-size: .84rem; line-height: 1.5;
+  backdrop-filter: blur(14px) saturate(165%); -webkit-backdrop-filter: blur(14px) saturate(165%);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.24), 0 6px 18px rgba(0,0,0,.20);
+}
+.auth-err { background: rgba(255,90,80,.16); color: #ffb4ad; border: 1px solid rgba(255,90,80,.34); }
 .auth-info { background: rgba(167,139,250,.18); color: #ded0ff; border: 1px solid rgba(167,139,250,.34);
-  border-radius: 12px; padding: 10px 13px; font-size: .84rem; font-weight: 600; line-height: 1.5;
-  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+  font-weight: 600; }
+
+/* ...and blacker in dark mode, so they don't glow brighter than the card. */
+:root[data-theme="dark"] .auth-err,
+:root[data-theme="dark"] .auth-info {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.13), 0 6px 18px rgba(0,0,0,.34);
+}
+:root[data-theme="dark"] .auth-err {
+  background: rgba(255,90,80,.12); border-color: rgba(255,90,80,.26); color: #ffa79f;
+}
+:root[data-theme="dark"] .auth-info {
+  background: rgba(167,139,250,.13); border-color: rgba(167,139,250,.26); color: #d3c2ff;
+}
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
