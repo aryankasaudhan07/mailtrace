@@ -379,8 +379,17 @@ export async function scanRecent(count = 25) {
       if (!pageToken || !(data.messages || []).length) break;
     }
 
+    // "Scan last N" is an explicit user action: they asked for these messages to
+    // be scored now. markSeen() returns false for anything an earlier scan already
+    // picked up, so gating on it made a second run silently score nothing.
+    // Record the id (so the background poll doesn't redo it) but always scan it;
+    // putScored() upserts by msgId, so a re-scan refreshes the row in place
+    // rather than duplicating it.
     const ids = [];
-    for (const id of found) if (await markSeen(id)) ids.push(id);
+    for (const id of found) {
+      await markSeen(id);
+      ids.push(id);
+    }
     if (!st.historyId) await baseline();
 
     // Chunk so a 50-message backfill still respects the per-batch cap.

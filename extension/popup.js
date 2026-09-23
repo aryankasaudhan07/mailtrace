@@ -194,7 +194,24 @@ async function renderInbox(st) {
     route();
   };
   document.getElementById('disconnect').onclick = async () => { await send('gmailDisconnect'); route(); };
-  document.getElementById('clear').onclick = async () => { await send('clear'); route(); };
+  // Clearing wipes every scored record with no undo, so require a second click.
+  // A native confirm() can dismiss the popup itself, hence the inline pattern.
+  const clearBtn = document.getElementById('clear');
+  let clearArmed = false;
+  clearBtn.onclick = async () => {
+    if (!clearArmed) {
+      clearArmed = true;
+      clearBtn.textContent = 'Click again to clear';
+      setTimeout(() => {
+        if (!clearArmed) return;
+        clearArmed = false;
+        clearBtn.textContent = 'Clear history';
+      }, 4000);
+      return;
+    }
+    await send('clear');
+    route();
+  };
   document.getElementById('probe').onclick = () => runProbe();
 
   await loadScored();
@@ -288,12 +305,16 @@ async function loadScored() {
   // At-a-glance counts, so the popup answers "am I OK?" before any reading.
   const sum = document.getElementById('summary');
   if (sum) {
+    // One box per band. Merging High Risk with Suspicious would hide a
+    // distinction the scorer makes and the rest of the product shows.
     const n = (b) => rows.filter((x) => x.band === b).length;
-    const crit = n('CRITICAL'), high = n('HIGH_RISK') + n('SUSPICIOUS'), ok = n('BENIGN');
-    sum.innerHTML = `
-      <div class="sbox crit"><div class="n">${crit}</div><div class="l">CRITICAL</div></div>
-      <div class="sbox high"><div class="n">${high}</div><div class="l">RISKY</div></div>
-      <div class="sbox ok"><div class="n">${ok}</div><div class="l">CLEAN</div></div>`;
+    sum.innerHTML = [
+      ['crit', 'CRITICAL', n('CRITICAL')],
+      ['high', 'HIGH RISK', n('HIGH_RISK')],
+      ['susp', 'SUSPICIOUS', n('SUSPICIOUS')],
+      ['ok', 'CLEAN', n('BENIGN')],
+    ].map(([cls, label, count]) =>
+      `<div class="sbox ${cls}"><div class="n">${count}</div><div class="l">${label}</div></div>`).join('');
   }
 
   if (!rows.length) {
