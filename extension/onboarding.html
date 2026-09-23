@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Set up Mailtrace</title>
+<style>
+  :root {
+    --bg:#fbf9f4; --card:#fff; --card-2:#f4f1ea; --line:#eae5da; --line-2:#dfd8c9;
+    --text:#1b1811; --text-2:#5f5949; --text-3:#9a927f;
+    --accent:#0e7a57; --accent-2:#18a774; --accent-dim:rgba(14,122,87,.10);
+    --crit:#c0392b; --crit-bg:#fdeceb;
+    --radius:14px;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:52px 20px 90px; background:var(--bg); color:var(--text);
+    font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; }
+  .wrap { max-width:640px; margin:0 auto; }
+
+  /* ---- header ---- */
+  .head { display:flex; align-items:center; gap:14px; margin-bottom:6px; }
+  .mark { width:46px; height:46px; border-radius:14px; display:grid; place-items:center; flex:none;
+    background:linear-gradient(140deg,var(--accent-2),var(--accent));
+    box-shadow:0 4px 14px rgba(14,122,87,.28); }
+  h1 { font-size:25px; letter-spacing:-.5px; margin:0; font-weight:780; }
+  .sub { color:var(--text-3); font-size:13px; }
+  .lede { color:var(--text-2); font-size:14.5px; line-height:1.65; margin:20px 0 22px; }
+  .lede b { color:var(--text); font-weight:650; }
+
+  /* ---- value strip ---- */
+  .value { display:flex; gap:10px; margin:0 0 28px; }
+  .v { flex:1; background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:13px 14px; }
+  .v .vi { color:var(--accent); margin-bottom:7px; display:block; }
+  .v h3 { margin:0 0 3px; font-size:13px; font-weight:700; letter-spacing:-.1px; }
+  .v p { margin:0; font-size:12px; color:var(--text-3); line-height:1.5; }
+
+  /* ---- step cards ---- */
+  .card { background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px 22px; margin-bottom:14px; }
+  .card.done { background:var(--accent-dim); border-color:rgba(14,122,87,.25); }
+  .step { display:flex; align-items:center; gap:11px; margin-bottom:12px; }
+  .num { width:24px; height:24px; border-radius:50%; display:grid; place-items:center; flex:none;
+    background:var(--card-2); color:var(--text-2); font-size:12px; font-weight:700; }
+  .card.done .num { background:var(--accent); color:#fff; }
+  .step h2 { font-size:15.5px; margin:0; font-weight:700; letter-spacing:-.2px; }
+  .card p { color:var(--text-2); font-size:13px; line-height:1.6; margin:0 0 14px; }
+
+  /* ---- forms ---- */
+  label { display:block; font-size:12px; color:var(--text-2); margin:10px 0 4px; font-weight:600; }
+  input { width:100%; padding:10px 12px; border:1px solid var(--line-2); border-radius:9px; background:var(--card);
+    font-size:13px; color:var(--text); outline:none; }
+  input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-dim); }
+  select { padding:9px 11px; border:1px solid var(--line-2); border-radius:9px; background:var(--card);
+    font-size:13px; color:var(--text); }
+  .btn { padding:11px 18px; border:none; border-radius:9px; background:var(--accent); color:#fff;
+    font-weight:650; font-size:13px; cursor:pointer; }
+  .btn:hover:not(:disabled) { background:var(--accent-2); }
+  .btn:disabled { opacity:.55; cursor:default; }
+  .btn.ghost { background:var(--card-2); color:var(--text-2); border:1px solid var(--line); }
+  .btn.ghost:hover:not(:disabled) { background:var(--line); }
+  .row { display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+
+  /* ---- permission list ---- */
+  .grants { list-style:none; padding:0; margin:0 0 16px; }
+  .grants li { display:flex; gap:10px; font-size:13px; color:var(--text-2); padding:7px 0; line-height:1.55; }
+  .grants .tick { color:var(--accent); font-weight:700; flex:none; }
+  .grants .no { color:var(--text-3); font-weight:700; flex:none; }
+
+  /* ---- states ---- */
+  .err { background:var(--crit-bg); color:var(--crit); font-size:12.5px; padding:10px 12px; border-radius:9px;
+    margin-top:12px; line-height:1.55; }
+  .ok { background:var(--accent-dim); color:var(--accent); font-size:12.5px; padding:10px 12px; border-radius:9px;
+    margin-top:12px; font-weight:600; }
+  .note { color:var(--text-3); font-size:11.5px; line-height:1.7; margin-top:18px; }
+  code { background:var(--card-2); padding:1px 5px; border-radius:4px; font-size:11.5px; }
+
+  /* ---- band legend ---- */
+  .bands { display:flex; gap:8px; flex-wrap:wrap; margin:4px 0 0; }
+  .chip { display:inline-flex; align-items:center; gap:6px; padding:5px 11px; border-radius:20px;
+    font-size:12px; font-weight:700; }
+  .dot { width:7px; height:7px; border-radius:50%; flex:none; }
+  a { color:var(--accent); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="head">
+    <div class="mark">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"
+        stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2.5 6.5 12 13l9.5-6.5"/></svg>
+    </div>
+    <div>
+      <h1>Set up Mailtrace</h1>
+      <div class="sub">Two short steps, then it works in the background</div>
+    </div>
+  </div>
+
+  <p class="lede">
+    Mailtrace checks the mail arriving in your inbox and flags what looks like
+    phishing or impersonation — <b>with the reasons behind every verdict</b>, not just a
+    label. Scores appear next to your conversations in Gmail.
+  </p>
+
+  <div class="value">
+    <div class="v">
+      <span class="vi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+      <h3>Catches what filters miss</h3>
+      <p>Impersonation and invoice fraud that pass every authentication check.</p>
+    </div>
+    <div class="v">
+      <span class="vi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+      <h3>Tells you why</h3>
+      <p>Every score lists the evidence that produced it.</p>
+    </div>
+    <div class="v">
+      <span class="vi"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+      <h3>Read-only</h3>
+      <p>It can never send, delete or change your mail.</p>
+    </div>
+  </div>
+
+  <div id="steps"></div>
+
+  <p class="note">
+    Analysis runs on the Mailtrace backend you sign in to — the extension never judges a
+    message itself, it only shows the verdict that backend returns. You can disconnect Gmail
+    at any time from the extension popup, or from
+    <a href="https://myaccount.google.com/permissions" target="_blank" rel="noreferrer">your Google account permissions</a>.
+  </p>
+</div>
+<script type="module" src="onboarding.js"></script>
+</body>
+</html>

@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- flat fill: a gradient is indistinguishable at 16px and only muddies it -->
+  <rect x="0" y="0" width="64" height="64" rx="14" fill="#0e7a57"/>
+  <!-- bigger envelope, less padding, so the shape survives the downscale -->
+  <rect x="9.5" y="17" width="45" height="30" rx="3" fill="#ffffff"/>
+  <!-- thinner fold so the white body still reads as an envelope -->
+  <path d="M12.5 20.5 L32 35 L51.5 20.5" fill="none" stroke="#0e7a57"
+        stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#18a774"/>
+      <stop offset="100%" stop-color="#0b6849"/>
+    </linearGradient>
+  </defs>
+  <!-- rounded-square tile -->
+  <rect x="0" y="0" width="64" height="64" rx="15" fill="url(#g)"/>
+  <!-- envelope body: solid white so it survives down to 16px -->
+  <rect x="13" y="19.5" width="38" height="25" rx="3.5" fill="#ffffff"/>
+  <!-- fold: thick emerald V, the one detail that still reads when tiny -->
+  <path d="M15.5 22.5 L32 34.5 L48.5 22.5" fill="none" stroke="#0b6849"
+        stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

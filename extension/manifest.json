@@ -1,24 +1,59 @@
 {
   "manifest_version": 3,
-  "name": "Mailtrace — Gmail Read Receipts",
-  "version": "1.0.0",
-  "description": "See when the Gmail messages you send get opened. Powered by your Mailtrace account.",
-  "permissions": ["storage"],
+  "name": "Mailtrace — Gmail threat scoring",
+  "version": "1.1.0",
+  "description": "Scores incoming Gmail for phishing and impersonation risk, and tells you when the mail you send gets opened.",
+  "minimum_chrome_version": "116",
+  "permissions": [
+    "storage",
+    "identity",
+    "alarms"
+  ],
   "host_permissions": [
     "https://mail.google.com/*",
+    "https://gmail.googleapis.com/*",
+    "https://oauth2.googleapis.com/*",
     "https://mailtrace-zeta.vercel.app/*",
-    "http://localhost:3000/*"
+    "http://localhost:3000/*",
+    "http://localhost:8000/*"
   ],
-  "background": { "service_worker": "background.js" },
+  "oauth2": {
+    "client_id": "616464194807-ddjqagfk4nmq29hcc4ocjag4cbb296bc.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.readonly"
+    ]
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Mailtrace Read Receipts"
+    "default_title": "Mailtrace",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
   },
   "content_scripts": [
     {
-      "matches": ["https://mail.google.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://mail.google.com/*"
+      ],
+      "js": [
+        "content.js",
+        "inbox-chip.js",
+        "gmail-web.js"
+      ],
       "run_at": "document_idle"
     }
-  ]
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  }
 }
