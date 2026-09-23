@@ -74,37 +74,142 @@
 .feature-t { font-weight: 600; font-size: .9rem; color: #f4efe4; letter-spacing: -.01em; }
 .feature-x { color: #c3bcac; font-size: .78rem; margin-top: 3px; line-height: 1.42; }
 
-/* ---- auth card (solid, pops on the dark video) ---- */
+/* ---- auth card — "liquid glass" ------------------------------------------
+   Translucent panel that refracts the ambient video behind it. Three things
+   make glass read as glass: a saturated backdrop blur (so colour bleeds
+   through rather than grey mush), a bright specular rim along the lit edge,
+   and an inner shadow on the opposite edge to give the pane thickness.
+   The card goes light-on-dark here, because dark text has nothing opaque to
+   sit on any more. */
 .authwrap { display: grid; place-items: center; }
 .authcard {
-  width: 100%; max-width: 424px; background: var(--card); color: var(--text);
-  box-shadow: 0 34px 80px rgba(0,0,0,.5), 0 2px 8px rgba(0,0,0,.3);
-  border: 1px solid rgba(255,255,255,.55);
-  border-radius: 22px; padding: 34px 32px;
+  position: relative; overflow: hidden;
+  width: 100%; max-width: 424px;
+  color: #f4f1ea;
+  border-radius: 28px; padding: 36px 32px;
   display: flex; flex-direction: column; gap: 15px;
+  background:
+    linear-gradient(162deg, rgba(255,255,255,.16) 0%, rgba(255,255,255,.06) 45%, rgba(255,255,255,.03) 100%),
+    linear-gradient(0deg, rgba(16,20,18,.34), rgba(16,20,18,.34));
+  backdrop-filter: blur(36px) saturate(185%);
+  -webkit-backdrop-filter: blur(36px) saturate(185%);
+  border: 1px solid rgba(255,255,255,.30);
+  box-shadow:
+    0 34px 80px rgba(0,0,0,.50),
+    0 2px 10px rgba(0,0,0,.28),
+    inset 0 1px 0 rgba(255,255,255,.62),
+    inset 1px 0 0 rgba(255,255,255,.16),
+    inset 0 -1px 0 rgba(255,255,255,.10);
 }
-.auth-badge { width: 60px; height: 60px; border-radius: 17px; background: var(--violet-dim);
-  color: var(--violet); display: grid; place-items: center; margin: 0 auto 2px; }
-.authcard h2 { text-align: center; margin: 0; font-size: 1.66rem; font-weight: 600; letter-spacing: -.02em; color: var(--text); }
+/* specular highlight: light catching the top curve of the pane */
+.authcard::before {
+  content: ''; position: absolute; left: -12%; right: -12%; top: -55%; height: 95%;
+  background: radial-gradient(58% 100% at 50% 100%, rgba(255,255,255,.28), transparent 72%);
+  pointer-events: none;
+}
+/* slow drift, so the glass feels alive rather than painted on */
+.authcard::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none; border-radius: inherit;
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,.07) 50%, transparent 62%);
+  background-size: 260% 100%;
+  animation: authSheen 9s ease-in-out infinite;
+}
+@keyframes authSheen { 0%,100% { background-position: 120% 0; } 50% { background-position: -20% 0; } }
+@media (prefers-reduced-motion: reduce) { .authcard::after { animation: none; } }
 
-.field { display: flex; align-items: center; gap: 10px; background: var(--card-2);
-  border: 1px solid var(--line); border-radius: 12px; padding: 0 14px; color: var(--text-3); }
-.field:focus-within { border-color: var(--violet); box-shadow: 0 0 0 3px var(--violet-dim); }
-.field input { flex: 1; background: none; border: none; outline: none; color: var(--text);
-  font-size: .92rem; padding: 13px 0; }
-.field .eye { background: none; border: none; color: var(--text-3); display: grid; place-items: center; }
+/* Dark mode: the same glass, mixed blacker. Light mode is untouched — the pane
+   there is already sitting on a bright video and needs the lighter mix to stay
+   legible. */
+:root[data-theme="dark"] .authcard {
+  background:
+    linear-gradient(162deg, rgba(255,255,255,.10) 0%, rgba(255,255,255,.035) 45%, rgba(255,255,255,.018) 100%),
+    linear-gradient(0deg, rgba(7,9,8,.64), rgba(7,9,8,.64));
+  border-color: rgba(255,255,255,.17);
+  box-shadow:
+    0 34px 80px rgba(0,0,0,.66),
+    0 2px 10px rgba(0,0,0,.40),
+    inset 0 1px 0 rgba(255,255,255,.40),
+    inset 1px 0 0 rgba(255,255,255,.10),
+    inset 0 -1px 0 rgba(255,255,255,.06);
+}
+:root[data-theme="dark"] .authcard::before {
+  background: radial-gradient(58% 100% at 50% 100%, rgba(255,255,255,.17), transparent 72%);
+}
+:root[data-theme="dark"] .authcard .field {
+  background: rgba(255,255,255,.075);
+  border-color: rgba(255,255,255,.15);
+}
+:root[data-theme="dark"] .authcard .field:focus-within {
+  background: rgba(255,255,255,.11);
+  border-color: rgba(134,239,196,.50);
+}
 
-.auth-row { display: flex; align-items: center; justify-content: space-between; font-size: .84rem; }
-.remember { display: flex; align-items: center; gap: 7px; color: var(--text-2); }
-.violet-link { color: var(--violet); font-weight: 600; cursor: pointer; }
-.violet-link:hover { text-decoration: underline; }
-.authcard .dim { color: var(--text-2); }
+.auth-badge {
+  width: 60px; height: 60px; border-radius: 19px; margin: 0 auto 2px;
+  display: grid; place-items: center; color: #eadcff;
+  background: linear-gradient(150deg, rgba(167,139,250,.38), rgba(139,92,246,.18));
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.40), 0 8px 22px rgba(80,50,160,.30);
+}
+.authcard h2 {
+  text-align: center; margin: 0; font-size: 1.66rem; font-weight: 600;
+  letter-spacing: -.02em; color: #fbf9f5;
+}
+.authcard .dim, .authcard .muted { color: rgba(244,241,234,.66); }
 
-.or { display: flex; align-items: center; gap: 12px; color: var(--text-3); font-size: .82rem; }
-.or::before, .or::after { content: ''; flex: 1; height: 1px; background: var(--line-2); }
+/* inputs: shallower panes of the same glass */
+.authcard .field {
+  position: relative;
+  display: flex; align-items: center; gap: 10px;
+  background: rgba(255,255,255,.12);
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 14px; padding: 0 14px;
+  color: rgba(244,241,234,.78);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.16);
+  transition: background .18s, border-color .18s, box-shadow .18s;
+}
+.authcard .field:focus-within {
+  background: rgba(255,255,255,.13);
+  border-color: rgba(134,239,196,.55);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.22), 0 0 0 3px rgba(45,190,134,.20);
+}
+.authcard .field input { flex: 1; background: none; border: none; outline: none;
+  color: #fbf9f5; font-size: .92rem; padding: 13px 0; }
+.authcard .field input::placeholder { color: rgba(244,241,234,.58); }
+.authcard .field input:-webkit-autofill {
+  -webkit-text-fill-color: #fbf9f5;
+  -webkit-box-shadow: 0 0 0 1000px rgba(60,70,64,.65) inset;
+  caret-color: #fbf9f5;
+}
+.authcard .field .eye { background: none; border: none; color: rgba(244,241,234,.6);
+  display: grid; place-items: center; cursor: pointer; }
+.authcard .field .eye:hover { color: #fbf9f5; }
 
-.auth-err { background: var(--crit-bg); color: var(--crit); border-radius: 12px; padding: 10px 13px; font-size: .84rem; }
-.auth-info { background: var(--violet-dim); color: var(--violet-2); border-radius: 12px; padding: 10px 13px; font-size: .84rem; font-weight: 600; }
+.authcard .auth-row { display: flex; align-items: center; justify-content: space-between; font-size: .84rem; }
+.authcard .remember { display: flex; align-items: center; gap: 7px; color: rgba(244,241,234,.78); }
+.authcard .violet-link { color: #c9b6ff; font-weight: 600; cursor: pointer; }
+.authcard .violet-link:hover { text-decoration: underline; color: #ded0ff; }
+
+/* primary action: brighter glass so it reads as the one solid thing */
+.authcard .btn {
+  border: 1px solid rgba(255,255,255,.22);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.34), 0 10px 26px rgba(0,0,0,.30);
+}
+
+.authcard .or { display: flex; align-items: center; gap: 12px;
+  color: rgba(244,241,234,.55); font-size: .82rem; }
+.authcard .or::before, .authcard .or::after {
+  content: ''; flex: 1; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+}
+
+.auth-err { background: rgba(255,90,80,.16); color: #ffb4ad; border: 1px solid rgba(255,90,80,.34);
+  border-radius: 12px; padding: 10px 13px; font-size: .84rem; line-height: 1.5;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.auth-info { background: rgba(167,139,250,.18); color: #ded0ff; border: 1px solid rgba(167,139,250,.34);
+  border-radius: 12px; padding: 10px 13px; font-size: .84rem; font-weight: 600; line-height: 1.5;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
 .spin { animation: spin 1s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
