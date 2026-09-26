@@ -1,0 +1,36 @@
+name: Keep warm
+
+# Pings the deployed app so its Vercel serverless functions don't go cold.
+# On the free (Hobby) plan Vercel's own cron only runs once a day, which is no
+# use for warmth — so we drive it from GitHub Actions instead.
+#
+# Note: GitHub's scheduled runs are best-effort and can be delayed several
+# minutes under load, and the schedule is paused after ~60 days with no repo
+# activity. Before a live demo, trigger it by hand (Actions tab -> Keep warm ->
+# "Run workflow"), or run it a few times, to guarantee the app is hot.
+
+on:
+  schedule:
+    - cron: "*/5 * * * *" # every 5 minutes (GitHub's minimum)
+  workflow_dispatch: {} # manual "Run workflow" button, for right before a demo
+
+# If a run is still going when the next tick fires, drop the older one.
+concurrency:
+  group: keep-warm
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: |
+          url="https://mailtrace-zeta.vercel.app/api/health"
+          code=$(curl -s -o /dev/null -w '%{http_code}' -m 30 "$url")
+          echo "GET $url -> $code"
+          # A warm-up ping shouldn't fail the workflow over a transient blip;
+          # only a total miss (000) or a 5xx is worth surfacing.
+          case "$code" in
+            000|5??) echo "::warning::health check returned $code"; exit 1 ;;
+            *) exit 0 ;;
+          esac

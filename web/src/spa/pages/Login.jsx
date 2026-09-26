@@ -4,6 +4,7 @@ import {
   Mail, Cpu, MapPin, Scale, ShieldCheck, User, Lock, KeyRound, Eye, EyeOff, ArrowRight, Clock, Loader2,
 } from 'lucide-react'
 import { useAuth } from '../auth.jsx'
+import { api } from '../api.js'
 import './login.css'
 
 const FEATURES = [
@@ -27,6 +28,13 @@ export default function Login() {
     }, 1000 - (Date.now() % 1000))
     return () => { clearTimeout(start); clearInterval(interval) }
   }, [])
+
+  // Warm the serverless backend the moment this page loads, so the function is
+  // already booting while the user types. On the free tier the first request
+  // after an idle period pays a cold-start penalty; firing a throwaway health
+  // ping here hides most of that behind the time it takes to fill the form.
+  // Result and errors are ignored — it exists only to wake the region.
+  useEffect(() => { api.health().catch(() => {}) }, [])
 
   const [mode, setMode] = useState('login')          // login | register | reset
   const [step, setStep] = useState('request')        // register/reset sub-step: request | verify
