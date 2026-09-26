@@ -37,8 +37,13 @@ jobs:
         run: pytest -q
 
   frontend:
-    name: Frontend — build
+    name: Frontend — typecheck, tests & build
     runs-on: ubuntu-latest
+    # The app lives in web/ (the old frontend/ SPA was removed). Everything below
+    # runs from there.
+    defaults:
+      run:
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
 
@@ -46,12 +51,16 @@ jobs:
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: frontend/package-lock.json
+          cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
-        working-directory: frontend
         run: npm ci
 
+      - name: Typecheck (tsc)
+        run: npm run typecheck
+
+      - name: Tests (vitest)
+        run: npm test
+
       - name: Production build
-        working-directory: frontend
         run: npm run build
